@@ -14,7 +14,7 @@ from datasets import load_dataset
 
 set_env(seed=42)
 
-batch_size = 512
+batch_size = 1
 threshold = 0.8
 
 classes_path = Path.cwd() / "data"
@@ -25,17 +25,25 @@ os.makedirs(classes_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
-
 # 
 # data
 # 
 
-testset = load_dataset("phiyodr/coco2017", split="validation", streaming=False, cache_dir=dataset_path)
-testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
+
+if __name__ == "__main__":
+    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=torch.cuda.is_available())
+
+    for elem in testloader:
+        print(elem.keys())
+
+        exit()
 
 # 
 # model
 # 
+
+# https://ai.google.dev/edge/litert/models/convert_pytorch
 
 # model_id = "facebook/detr-resnet-101-dc5"  # largest model
 # device = get_device(disable_mps=False)
