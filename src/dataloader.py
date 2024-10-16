@@ -24,14 +24,14 @@ os.makedirs(weights_path, exist_ok=True)
 
 def main(args: dict):
     device = get_device(disable_mps=False)
-    model_id = "facebook/detr-resnet-101-dc5"  # largest model
-    feature_extractor = DetrFeatureExtractor.from_pretrained(model_id, cache_dir=weights_path, local_files_only=True)  # maybe also threshold arg
+    model_id = "facebook/detr-resnet-101-dc5"
+    feature_extractor = DetrFeatureExtractor.from_pretrained(model_id, cache_dir=weights_path, local_files_only=True)
     model = DetrForObjectDetection.from_pretrained(model_id, cache_dir=weights_path, local_files_only=True)
     model.eval()
     model.to(device)
 
     coco_classes = json.load(open(classes_path / "coco_classes.json", "r"))
-    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)  # can't .map(toTensor()) in memory for batching
+    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)  # can't map(toTensor()) in memory for batching
 
     for sample in tqdm(testset):
         image: Image.Image = sample["image"]
