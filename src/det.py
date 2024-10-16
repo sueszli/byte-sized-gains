@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,7 +23,39 @@ os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
 
-def main(args: dict):
+def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
+    true_positives = 0
+    false_positives = 0
+
+    def compute_iou(box1, box2):
+        # convert [x, y, w, h] to [x1, y1, x2, y2]
+        b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[0] + box1[2], box1[1] + box1[3]
+        b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[0] + box2[2], box2[1] + box2[3]
+
+        inter_area = max(0, min(b1_x2, b2_x2) - max(b1_x1, b2_x1)) * max(0, min(b1_y2, b2_y2) - max(b1_y1, b2_y1))
+
+        b1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
+        b2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
+        union_area = b1_area + b2_area - inter_area
+
+        iou = inter_area / union_area if union_area > 0 else 0
+        return iou
+
+    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
+        matched = False
+        for true_label, true_bbox in zip(true_labels, true_bboxes):
+            if pred_label == true_label and compute_iou(pred_bbox, true_bbox) >= iou_threshold:
+                true_positives += 1
+                matched = True
+                break
+        if not matched:
+            false_positives += 1
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    return precision
+
+
+def eval(args: dict):
     device = get_device(disable_mps=False)
     model_id = "facebook/detr-resnet-101-dc5"
     feature_extractor = DetrFeatureExtractor.from_pretrained(model_id, cache_dir=weights_path, local_files_only=True)
@@ -39,6 +72,7 @@ def main(args: dict):
         image: Image.Image = sample["image"]
         image_id: int = sample["image_id"]
         true_bboxes: dict = sample["objects"]  # {"bbox": [[x, y, w, h]], "label": [int]}
+        true_bboxes = {k.replace("bbox", "boxes").replace("label", "labels"): v for k, v in true_bboxes.items()}  # rename to match model
 
         # preprocessing
         image = image.convert("RGB")
@@ -64,22 +98,25 @@ def main(args: dict):
 
         # postprocessing
         target_sizes = torch.tensor([image.size[::-1]])
-        results = feature_extractor.post_process_object_detection(outputs, target_sizes=target_sizes, threshold=args.threshold)[0]
+        results = feature_extractor.post_process_object_detection(outputs, target_sizes=target_sizes, threshold=args.inference_threshold)[0]
         results = {k: v.cpu() for k, v in results.items()}
         results["labels_names"] = [model.config.id2label[elem] for elem in [elem.cpu().item() for elem in results["labels"]]]
 
         # evaluation
-        # print(results["scores"])
-        # print(results["boxes"])
-        # print(results["labels"])
-
-        print(results["labels_names"])
+        pred_scores = results["scores"]  # [float]
+        pred_labels = results["labels"]  # [int]
+        pred_bboxes = results["boxes"]  # [x, y, w, h]
+        true_labels = true_bboxes["labels"]  # [int]
+        true_bboxes = true_bboxes["boxes"]  # [x, y, w, h]
+        metrics["precision"] = compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes)
+        print(json.dumps(metrics, indent=4))
 
     # https://ai.google.dev/edge/litert/models/convert_pytorch
 
 
 if __name__ == "__main__":
     args = SimpleNamespace(
-        threshold=0.9,
+        inference_threshold=0.5,
+        iou_threshold=0.5,
     )
-    main(args)
+    eval(args)
