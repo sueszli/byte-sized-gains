@@ -1,4 +1,4 @@
-import json
+import csv
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,11 +14,11 @@ from utils import get_device, set_env
 
 set_env(seed=42)
 
-classes_path = Path.cwd() / "data"
+output_path = Path.cwd() / "data"
 dataset_path = Path.cwd() / "datasets"
 weights_path = Path.cwd() / "weights"
 
-os.makedirs(classes_path, exist_ok=True)
+os.makedirs(output_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
@@ -55,7 +55,7 @@ def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_th
     return precision
 
 
-def eval(args: dict):
+def main(args: dict):
     device = get_device(disable_mps=False)
     model_id = "facebook/detr-resnet-101-dc5"
     feature_extractor = DetrFeatureExtractor.from_pretrained(model_id, cache_dir=weights_path, local_files_only=True)
@@ -64,6 +64,17 @@ def eval(args: dict):
     model.to(device)
 
     testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)  # can't map(toTensor()) in-memory for batching
+
+    print("\n" * 3 + "=" * 40)
+    print(f"args: {args}")
+    print(f"device: {device}")
+    print(f"model: {model_id}")
+    print(f"model size: {sum(p.numel() for p in model.parameters() if p.requires_grad) * 4 / 1024 / 1024:.2f} MB")
+    print(f"testset length: {len(testset)}")
+    print("=" * 40 + "\n" * 3)
+
+    outputfile = output_path / "det_metrics.csv"
+    assert not outputfile.exists(), f"outputfile {outputfile} already exists"
 
     for sample in tqdm(testset):
         metrics = {}
@@ -79,7 +90,7 @@ def eval(args: dict):
         inputs = feature_extractor(images=image, return_tensors="pt")
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
-        # benchmark inference
+        # runtime
         def inference():
             with torch.inference_mode():
                 outputs = model(**inputs)
@@ -108,8 +119,14 @@ def eval(args: dict):
         pred_bboxes = results["boxes"]  # [x, y, w, h]
         true_labels = true_bboxes["labels"]  # [int]
         true_bboxes = true_bboxes["boxes"]  # [x, y, w, h]
-        metrics["precision"] = compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes)
-        print(json.dumps(metrics, indent=4))
+        metrics["precision"] = compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, args.precision_threshold)
+
+        # save metrics
+        with open(outputfile, "a", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=metrics.keys())
+            if csvfile.tell() == 0:
+                writer.writeheader()
+            writer.writerow(metrics)
 
     # https://ai.google.dev/edge/litert/models/convert_pytorch
 
@@ -117,6 +134,6 @@ def eval(args: dict):
 if __name__ == "__main__":
     args = SimpleNamespace(
         inference_threshold=0.5,
-        iou_threshold=0.5,
+        precision_threshold=0.5,
     )
-    eval(args)
+    main(args)
