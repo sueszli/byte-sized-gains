@@ -33,17 +33,12 @@ def main(args: dict):
     testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)  # can't map(toTensor()) in-memory for batching
 
     for sample in tqdm(testset):
-        metrics = {
-            "accuracy": 0,
-            "precision": 0,
-            "recall": 0,
-            "inference_time": 0,
-        }
+        metrics = {}
 
         # ground truth
         image: Image.Image = sample["image"]
         image_id: int = sample["image_id"]
-        true_bboxes: dict = sample["objects"]
+        true_bboxes: dict = sample["objects"]  # {"bbox": [[x, y, w, h]], "label": [int]}
 
         # preprocessing
         image = image.convert("RGB")
@@ -70,25 +65,15 @@ def main(args: dict):
         # postprocessing
         target_sizes = torch.tensor([image.size[::-1]])
         results = feature_extractor.post_process_object_detection(outputs, target_sizes=target_sizes, threshold=args.threshold)[0]
-        results["boxes"] = [elem.cpu().tolist() for elem in results["boxes"]]
-        results["scores"] = [elem.cpu().item() for elem in results["scores"]]
-        results["labels"] = [elem.cpu().item() for elem in results["labels"]]
-        results["labels_names"] = [model.config.id2label[elem] for elem in results["labels"]]
-        boxes = results["boxes"]
-        scores = results["scores"]
-        labels = results["labels"]
-        label_names = results["labels_names"]
-        assert all(isinstance(box, list) and len(box) == 4 for box in boxes)
-        assert all(isinstance(score, float) for score in scores)
-        assert all(isinstance(label, int) for label in labels)
-        assert all(isinstance(label_name, str) for label_name in label_names)
-        assert all(all(isinstance(coord, float) for coord in box) for box in boxes)
+        results = {k: v.cpu() for k, v in results.items()}
+        results["labels_names"] = [model.config.id2label[elem] for elem in [elem.cpu().item() for elem in results["labels"]]]
 
-        # # performance metrics
-        # for box, score, label, label_name in zip(boxes, scores, labels, label_names):
-        #     print(f"{label_name}/{label} - {score:.2f} @ {box}")
+        # evaluation
+        # print(results["scores"])
+        # print(results["boxes"])
+        # print(results["labels"])
 
-        print(f"Image {image_id} - Inference time: {metrics['inference_time']:.2f}s")
+        print(results["labels_names"])
 
     # https://ai.google.dev/edge/litert/models/convert_pytorch
 
