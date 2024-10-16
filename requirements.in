@@ -1,2 +1,7 @@
+ai_edge_torch
 numpy
+Pillow
+Requests
 torch
+tqdm
+transformers

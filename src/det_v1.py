@@ -1,3 +1,9 @@
+"""
+had to throw this away because `ai_edge_torch` has some weird cross dependency i couldn't resolve
+
+see: https://github.com/google-ai-edge/ai-edge-torch?tab=readme-ov-file#update-ld_library_path-if-necessary
+"""
+
 import csv
 import os
 from pathlib import Path
@@ -77,13 +83,12 @@ def main(args: dict):
     assert not outputfile.exists(), f"outputfile {outputfile} already exists"
 
     for sample in tqdm(testset):
-        metrics = {}
-
-        # ground truth
         image: Image.Image = sample["image"]
         image_id: int = sample["image_id"]
-        true_bboxes: dict = sample["objects"]  # {"bbox": [[x, y, w, h]], "label": [int]}
+        true_bboxes: dict = sample["objects"]
         true_bboxes = {k.replace("bbox", "boxes").replace("label", "labels"): v for k, v in true_bboxes.items()}  # rename to match model
+
+        output = {}
 
         # preprocessing
         image = image.convert("RGB")
@@ -101,13 +106,10 @@ def main(args: dict):
             globals={"inference": inference, "model": model, "inputs": inputs, "torch": torch},
         )
         measurement = timer.blocked_autorange()
-        metrics["inference_time"] = measurement.mean
-
-        # inference
-        with torch.inference_mode():
-            outputs = model(**inputs)
+        output["inference_time"] = measurement.mean
 
         # postprocessing
+        outputs = inference()
         target_sizes = torch.tensor([image.size[::-1]])
         results = feature_extractor.post_process_object_detection(outputs, target_sizes=target_sizes, threshold=args.inference_threshold)[0]
         results = {k: v.cpu() for k, v in results.items()}
@@ -119,16 +121,14 @@ def main(args: dict):
         pred_bboxes = results["boxes"]  # [x, y, w, h]
         true_labels = true_bboxes["labels"]  # [int]
         true_bboxes = true_bboxes["boxes"]  # [x, y, w, h]
-        metrics["precision"] = compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, args.precision_threshold)
+        output["precision"] = compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, args.precision_threshold)
 
-        # save metrics
+        # save output
         with open(outputfile, "a", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=metrics.keys())
+            writer = csv.DictWriter(csvfile, fieldnames=output.keys())
             if csvfile.tell() == 0:
                 writer.writeheader()
-            writer.writerow(metrics)
-
-    # https://ai.google.dev/edge/litert/models/convert_pytorch
+            writer.writerow(output)
 
 
 if __name__ == "__main__":
