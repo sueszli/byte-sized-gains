@@ -42,7 +42,7 @@ def main(args):
     # original model
     model_path = weights_path / "mobilenetv2"
     if not model_path.exists():
-        model = kagglehub.model_download(handle="tensorflow/ssd-mobilenet-v2/tensorFlow2/ssd-mobilenet-v2", path=str(model_path)) # needs kaggle auth
+        model = kagglehub.model_download(handle="tensorflow/ssd-mobilenet-v2/tensorFlow2/ssd-mobilenet-v2", path=str(model_path))
         tf.saved_model.save(model, str(model_path))
     model = tf.saved_model.load(str(model_path))
     print(f"original model: {sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file()) / 1024 / 1024:.2f} MB")
@@ -82,21 +82,21 @@ def main(args):
     # eval
     # 
 
-
     configs = ["float32", "float16", "int8"]
     for config in configs:
+        print(f"evaluating {config} model")
 
         quant_model_path = weights_path / f"mobilenetv2_{config}.tflite"
         interpreter = tf.lite.Interpreter(model_path=str(quant_model_path))
         interpreter.allocate_tensors()
-        
-        test_dataset = coco_dataset["test"].map(preprocess_image).batch(1).take(1)
-        test_image = next(iter(test_dataset))[0]
-        
-        def det(interpreter, test_image):
-            input_details = interpreter.get_input_details()[0]
-            output_details = interpreter.get_output_details()
-            input_shape = input_details["shape"]
+        input_details = interpreter.get_input_details()[0]
+        output_details = interpreter.get_output_details()
+        input_shape = input_details["shape"]
+
+        test_dataset = coco_dataset["test"].batch(1).take(args.sample_size)
+        for data in tqdm(test_dataset):
+            test_image = preprocess_image(data)
+            test_image = test_image[0]
             test_image = test_image.numpy()
             test_image = tf.image.resize(test_image, (input_shape[1], input_shape[2]))
             if input_details["dtype"] == np.uint8:
@@ -106,12 +106,15 @@ def main(args):
                 else:
                     test_image = test_image - input_zero_point
             test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
+            
+            start_time = tf.timestamp()
             interpreter.set_tensor(input_details["index"], test_image)
             interpreter.invoke()
-            outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            return outputs
+            end_time = tf.timestamp()
+            inference_time = end_time - start_time
 
-        print(det(interpreter, test_image))
+            outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
+            print(outputs)
 
 
 if __name__ == "__main__":
