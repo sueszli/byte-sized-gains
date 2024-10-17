@@ -1,7 +1,8 @@
 """
-had to throw this away because `ai_edge_torch` has some weird cross dependency i couldn't resolve :(
+pytorch doesn't compile with liteRT
 
-see: https://github.com/google-ai-edge/ai-edge-torch?tab=readme-ov-file#update-ld_library_path-if-necessary
+- had to throw this away because `ai_edge_torch` has some weird cross dependency i couldn't resolve :(
+- see: https://github.com/google-ai-edge/ai-edge-torch?tab=readme-ov-file#update-ld_library_path-if-necessary
 """
 
 import csv

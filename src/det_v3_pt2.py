@@ -1,9 +1,9 @@
 """
-after a 2 full days of debugging it turned out that this very specific model breaks the quantizer and only returns zeros.
+implementation of int8 quantization
 
-i decided to start from scratch with a smaller model.
-
-docs: https://ai.google.dev/edge/litert/models/post_training_integer_quant
+- after a 2 full days of debugging it turned out that this very specific model breaks the quantizer and only returns zeros.
+- i decided to start from scratch with a smaller model.
+- docs: https://ai.google.dev/edge/litert/models/post_training_integer_quant
 """
 
 import os

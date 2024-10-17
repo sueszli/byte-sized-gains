@@ -1,7 +1,8 @@
 """
-managed to quantize the model to float32 and float16, but not int8 - so i decided to do that in a seperate script.
+implementation of float32 and float16 quantization
 
-docs: https://ai.google.dev/edge/litert/models/model_optimization
+- int8 quantization is not working for this model, decided to try again in a separate script
+- docs: https://ai.google.dev/edge/litert/models/model_optimization
 """
 
 import os
