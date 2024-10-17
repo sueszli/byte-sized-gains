@@ -21,17 +21,16 @@ os.makedirs(weights_path, exist_ok=True)
 
 
 def main(args: dict):
-    # 
+    #
     # dataset
-    # 
+    #
 
-    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)
-    testset = testset.select(list(range(1500)))
+    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path).take(1500)
     print(f"testset size: {len(testset)}")
 
-    # 
+    #
     # models
-    # 
+    #
 
     model = hub.load("https://www.kaggle.com/models/tensorflow/efficientdet/TensorFlow2/d0/1")
     model_path = weights_path / "efficientdet"
@@ -40,46 +39,60 @@ def main(args: dict):
     print(f"original model size: {sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file()) / 1024 / 1024:.2f} MB")
 
     configs = ["float32", "float16", "int8"]
+
     for config in configs:
         tflite_model_path = weights_path / f"efficientdet_{config}.tflite"
         if tflite_model_path.exists():
             print(f"{config} tflite model size: {tflite_model_path.stat().st_size / 1024 / 1024:.2f} MB - already exists")
             continue
-        
+
         converter = tf.lite.TFLiteConverter.from_saved_model(str(model_path))
-        
+
         if config == "float32":
-            pass # default
+            pass  # default
 
         elif config == "float16":
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_types = [tf.float16]
 
         elif config == "int8":
-            def representative_dataset_gen():
-                for data in testset.take(100):
-                    image = data['image']
-                    image = tf.image.resize(image, (512, 512))
-                    image = tf.cast(image, tf.uint8)
+            size = 50
+            representative_dataset = []
+            for sample in tqdm(list(testset.take(size))):
+                image = sample["image"]
+                if not isinstance(image, tf.Tensor):
+                    image = tf.convert_to_tensor(image)
+                if len(image.shape) == 2:
+                    image = tf.expand_dims(image, -1)
+                if len(image.shape) == 3:
                     image = tf.expand_dims(image, 0)
-                    yield [image]
+                image = tf.image.resize(image, (512, 512))
+                image = tf.cast(image, tf.uint8)
+                if image.shape[-1] == 1:
+                    image = tf.image.grayscale_to_rgb(image)
+                representative_dataset.append(image)
+
+            def representative_dataset_gen():
+                for i, img in enumerate(representative_dataset):
+                    print(f"int8 progress: {i}/{size}")
+                    yield [img]
+
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.representative_dataset = representative_dataset_gen
             converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
             converter.inference_input_type = tf.uint8
             converter.inference_output_type = tf.uint8
-            converter.experimental_new_quantizer = True
-        
+
         tflite_model = converter.convert()
-        with open(tflite_model_path, 'wb') as f:
+        with open(tflite_model_path, "wb") as f:
             f.write(tflite_model)
         print(f"{config} tflite model size: {tflite_model_path.stat().st_size / 1024 / 1024:.2f} MB")
 
     exit()
 
-    # 
+    #
     # eval loop
-    # 
+    #
 
     for config in configs:
         # load model
