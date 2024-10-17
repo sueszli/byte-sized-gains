@@ -119,9 +119,8 @@ def main(args):
 
             # precision
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            print(data["objects"].keys())
-            # print(outputs)
-
+            ground_truth = data["objects"]["bbox"]
+            print(ground_truth)
 
 if __name__ == "__main__":
     args = SimpleNamespace(

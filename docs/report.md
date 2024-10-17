@@ -55,9 +55,10 @@ But after implementing the entire evaluation pipeline for our experiments in PyT
 
 We started from scratch, but this time instead of looking for state-of-the-art performance we were solely looking for models compatible with the very specific LiteRT quantization tool. We found that the models that are supported by LiteRT are very limited and the only models that are supported are the ones that are available in the TensorFlow model zoo. We initially started off by using Efficientnet but stumbled upon 0-gradient bugs in the int8 quantified version as the model is quite deep. We spent 2 full days trying to mitigate these issues but ended up pivoting again, but this time to the SSD family of models. We found that the SSD family of models are well supported by LiteRT and are also quite lightweight and performant.
 
-Finally we decided to use `mobilenet_v2` as our base model for the quantization experiments. We quantized the model with LiteRT and the configurations [float32, float16, int8]. We measured the accuracy and computational cost of a few images to make sure the model is working as expected. This time we were fortuate enough to be able to conduct our experiments successfully after just a few hours. All previous attempts for each exercise were documented in the repository.
+Finally we decided to use `mobilenet_v2` as our base model for the quantization experiments. We quantized the model with LiteRT and the configurations [float32, float16, int8].
 
-... write about experiments and results ...
+
+All previous attempts for each exercise were documented in the repository.
 
 # Results 1.2
 
