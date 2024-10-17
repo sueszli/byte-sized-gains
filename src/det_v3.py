@@ -40,21 +40,24 @@ print(f"model outputs shape {model.signatures['serving_default'].outputs}")
 print(f"model inputs dtype {model.signatures['serving_default'].inputs[0].dtype}")
 print(f"model outputs dtype {model.signatures['serving_default'].outputs[0].dtype}")
 
-def preprocess(image): # requirements of efficientdet (don't change)
+
+def preprocess(image):  # requirements of efficientdet (don't change)
     image = tf.image.resize(image, (512, 512))
     image = tf.cast(image, tf.float32) / 255.0
     image = tf.cast(image, tf.uint8)
     image = tf.expand_dims(image, axis=0)
     return image
 
+
 # int8 quantize efficientdet model
 config = "int8"
 tflite_model_path = weights_path / f"efficientdet_{config}.tflite"
 
 if not tflite_model_path.exists():
+
     def representative_dataset_gen():
         for data in tqdm(testset.take(10)):
-            yield [preprocess(data['image'])]
+            yield [preprocess(data["image"])]
 
     converter = tf.lite.TFLiteConverter.from_saved_model(str(model_path))
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -65,15 +68,15 @@ if not tflite_model_path.exists():
     tflite_model = converter.convert()
 
     tflite_model_path = weights_path / f"efficientdet_{config}.tflite"
-    with open(tflite_model_path, 'wb') as f:
+    with open(tflite_model_path, "wb") as f:
         f.write(tflite_model)
 
 # inference
 interpreter = tf.lite.Interpreter(model_path=str(tflite_model_path))
 interpreter.allocate_tensors()
 
-input_type = interpreter.get_input_details()[0]['dtype']
-output_type = interpreter.get_output_details()[0]['dtype']
+input_type = interpreter.get_input_details()[0]["dtype"]
+output_type = interpreter.get_output_details()[0]["dtype"]
 input_details = interpreter.get_input_details()[0]
 output_details = interpreter.get_output_details()[0]
 
@@ -84,7 +87,7 @@ print(f"output_details: {output_details}")
 
 for sample in tqdm(testset):
     # same as: test_image = preprocess(sample['image'])
-    test_image = sample['image']
+    test_image = sample["image"]
     print(f"test_image: {test_image.shape}")
     test_image = tf.image.resize(test_image, (512, 512))
     print(f"test_image after tf.image.resize: {test_image.shape}")
@@ -96,7 +99,7 @@ for sample in tqdm(testset):
     print(f"test_image after tf.expand_dims: {test_image.shape}")
 
     # Check if the input type is quantized, then rescale input data to uint8
-    if input_details['dtype'] == np.uint8:
+    if input_details["dtype"] == np.uint8:
         input_scale, input_zero_point = input_details["quantization"]
         print(f"input_scale: {input_scale}")
         print(f"input_zero_point: {input_zero_point}")

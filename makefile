@@ -140,13 +140,13 @@ md-to-pdf:
 
 .PHONY: fmt # format codebase
 fmt:
-	./.venv/bin/python3 -m pip install isort
-	./.venv/bin/python3 -m pip install ruff
-	./.venv/bin/python3 -m pip install autoflake
+	python -m pip install isort
+	python -m pip install ruff
+	python -m pip install autoflake
 
-	./.venv/bin/python3 -m isort .
-	./.venv/bin/python3 -m autoflake --remove-all-unused-imports --recursive --in-place .
-	./.venv/bin/python3 -m ruff format --config line-length=500 .
+	python -m isort .
+	python -m autoflake --remove-all-unused-imports --recursive --in-place .
+	python -m ruff format --config line-length=500 .
 
 .PHONY: sec # check for vulns
 sec:
