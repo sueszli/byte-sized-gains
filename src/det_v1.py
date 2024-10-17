@@ -69,7 +69,7 @@ def main(args: dict):
     model.eval()
     model.to(device)
 
-    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)  # can't map(toTensor()) in-memory for batching
+    testset = load_dataset("rafaelpadilla/coco2017", split="val", streaming=False, cache_dir=dataset_path)
 
     print("\n" * 3 + "=" * 40)
     print(f"args: {args}")
