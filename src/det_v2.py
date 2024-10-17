@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,6 +19,19 @@ weights_path = Path.cwd() / "weights"
 os.makedirs(output_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
+
+
+def preprocess_image(image, target_size=(512, 512)):
+    if not isinstance(image, tf.Tensor):
+        image = tf.convert_to_tensor(image)
+    if len(image.shape) == 2:
+        image = tf.expand_dims(image, -1)
+    if len(image.shape) == 3:
+        image = tf.expand_dims(image, 0)
+    image = tf.image.resize(image, target_size)
+    if image.shape[-1] == 1:
+        image = tf.image.grayscale_to_rgb(image)
+    return image
 
 
 def main(args: dict):
@@ -60,16 +74,8 @@ def main(args: dict):
             representative_dataset = []
             for sample in tqdm(list(testset.take(size))):
                 image = sample["image"]
-                if not isinstance(image, tf.Tensor):
-                    image = tf.convert_to_tensor(image)
-                if len(image.shape) == 2:
-                    image = tf.expand_dims(image, -1)
-                if len(image.shape) == 3:
-                    image = tf.expand_dims(image, 0)
-                image = tf.image.resize(image, (512, 512))
+                image = preprocess_image(image)
                 image = tf.cast(image, tf.uint8)
-                if image.shape[-1] == 1:
-                    image = tf.image.grayscale_to_rgb(image)
                 representative_dataset.append(image)
 
             def representative_dataset_gen():
@@ -92,14 +98,55 @@ def main(args: dict):
     # eval loop
     #
 
+    exit()
+
     for config in configs:
-        # load model
-        model = tf.lite.Interpreter(model_path=weights_path / f"efficientdet_{config}.tflite")
+        print(f"evaluating {config} model")
+        tflite_model_path = weights_path / f"efficientdet_{config}.tflite"
+        interpreter = tf.lite.Interpreter(model_path=str(tflite_model_path))
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
 
         for sample in tqdm(testset):
             image: Image.Image = sample["image"]
             image_id: int = sample["image_id"]
-            true_bboxes: dict = sample["objects"]  # {"bbox": [x, y, w, h], "label": int}
+            true_bboxes: list = sample["objects"]  # {"bbox": [x, y, w, h], "label": int}
+
+            output = {}
+            output["config"] = config
+
+            # efficiency
+            input_image = preprocess_image(image)
+            if config == "int8":
+                input_image = tf.cast(input_image, tf.uint8)
+            elif config == "float16":
+                input_image = tf.cast(input_image, tf.float16)
+            else:
+                input_image = tf.cast(input_image, tf.float32)
+
+            interpreter.set_tensor(input_details[0]["index"], input_image)
+            start_time = time.time()
+            interpreter.invoke()
+            inference_time = time.time() - start_time
+            output["inference_time"] = inference_time
+
+            output = {}
+            output["config"] = config
+
+            # efficiency
+            input_image = preprocess_image(image)
+            interpreter.set_tensor(input_details[0]["index"], input_image)
+            start_time = time.time()
+            interpreter.invoke()
+            inference_time = time.time() - start_time
+            output["inference_time"] = inference_time
+
+            # precision
+            boxes = interpreter.get_tensor(output_details[0]["index"])
+            classes = interpreter.get_tensor(output_details[1]["index"])
+            scores = interpreter.get_tensor(output_details[2]["index"])
+            num_detections = int(interpreter.get_tensor(output_details[3]["index"])[0])
 
 
 if __name__ == "__main__":
