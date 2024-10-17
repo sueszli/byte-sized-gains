@@ -1,4 +1,3 @@
-import csv
 from types import SimpleNamespace
 import logging
 import os

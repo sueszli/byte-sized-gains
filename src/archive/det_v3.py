@@ -1,3 +1,8 @@
+"""
+everything works fine now - but just for the int8 model,
+will need to add the float32 and float16 models next
+"""
+
 import logging
 import os
 from pathlib import Path
