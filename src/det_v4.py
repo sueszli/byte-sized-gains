@@ -110,46 +110,6 @@ def main(args):
         print(outputs)
 
 
-
-
-
-    # def preprocess(data):
-    #     image = preprocess_image(data)
-    #     objects = data["objects"] # ['area', 'bbox', 'id', 'is_crowd', 'label']
-    #     return image, objects
-
-    # configs = ["int8"]
-    # for config in configs:
-        
-    #     quant_model_path = weights_path / f"mobilenetv2_{config}.tflite"
-    #     interpreter = tf.lite.Interpreter(model_path=str(quant_model_path))
-    #     interpreter.allocate_tensors()
-    #     input_details = interpreter.get_input_details()[0]
-    #     output_details = interpreter.get_output_details()
-    #     input_shape = input_details["shape"]
-
-    #     assert len(coco_dataset["test"]) >= args.sample_size
-    #     test_dataset = coco_dataset["test"].map(preprocess).batch(1).take(args.sample_size)
-
-    #     for test_image, truth_objects in tqdm(test_dataset):
-    #         test_image = test_image.numpy()
-    #         test_image = tf.image.resize(test_image, (input_shape[1], input_shape[2]))
-    #         if input_details["dtype"] == np.uint8:
-    #             input_scale, input_zero_point = input_details["quantization"]
-    #             if input_scale != 0:
-    #                 test_image = (test_image - input_zero_point) * input_scale
-    #             else:
-    #                 test_image = test_image - input_zero_point
-    #         test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
-    #         interpreter.set_tensor(input_details["index"], test_image)
-    #         interpreter.invoke()
-    #         outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            
-            
-    #         print(outputs)
-
-
-
 if __name__ == "__main__":
     args = SimpleNamespace(
         int8_train_size = 100,
