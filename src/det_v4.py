@@ -1,3 +1,7 @@
+"""
+finally got int8 quantization to work for mobilenetv2 - time to bring everything together
+"""
+
 import logging
 import os
 from pathlib import Path
