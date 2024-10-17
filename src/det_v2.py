@@ -88,8 +88,6 @@ def main(args: dict):
             f.write(tflite_model)
         print(f"{config} tflite model size: {tflite_model_path.stat().st_size / 1024 / 1024:.2f} MB")
 
-    exit()
-
     #
     # eval loop
     #
