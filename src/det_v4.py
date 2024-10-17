@@ -77,13 +77,19 @@ interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()[0]
 output_details = interpreter.get_output_details()
 
+input_shape = input_details["shape"]
+test_image = tf.image.resize(test_image, (input_shape[1], input_shape[2]))
+
 if input_details["dtype"] == np.uint8:
     input_scale, input_zero_point = input_details["quantization"]
-    test_image = test_image / input_scale + input_zero_point
+    if input_scale != 0:
+        test_image = (test_image - input_zero_point) * input_scale
+    else:
+        test_image = test_image - input_zero_point
 
 test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
 interpreter.set_tensor(input_details["index"], test_image)
 interpreter.invoke()
 
-outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
+outputs = [interpreter.get_tensor(output['index']) for output in output_details]
 print(outputs)
