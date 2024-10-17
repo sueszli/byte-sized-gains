@@ -1,5 +1,5 @@
 """
-managed to convert the model to float32 and float16, but not int8 - decided to do that in a separate script
+managed to quantize the model to float32 and float16, but not int8 - so i decided to do that in a seperate script.
 
 docs: https://ai.google.dev/edge/litert/models/model_optimization
 """

@@ -1,16 +1,22 @@
-import logging
+"""
+after a 2 full days of debugging it turned out that this very specific model breaks the quantizer and only returns zeros.
+
+i decided to start from scratch with a smaller model.
+
+docs: https://ai.google.dev/edge/litert/models/post_training_integer_quant
+"""
+
 import os
 from pathlib import Path
 
-import kagglehub
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import tensorflow_hub as hub
 from tqdm import tqdm
 
 from utils import set_env
 
-logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 set_env(seed=42)
 output_path = Path.cwd() / "data"
 dataset_path = Path.cwd() / "datasets"
@@ -20,15 +26,10 @@ os.makedirs(output_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
+#
+# data
+#
 
-# mobilenetv2
-model_path = weights_path / "mobilenetv2"
-if not model_path.exists():
-    model = kagglehub.model_download(handle="tensorflow/ssd-mobilenet-v2/tensorFlow2/ssd-mobilenet-v2", path=str(model_path))
-    tf.saved_model.save(model, str(model_path))
-model = tf.saved_model.load(str(model_path))
-
-# coco2017
 coco_dataset, coco_info = tfds.load("coco/2017", with_info=True, data_dir=dataset_path)
 
 
@@ -39,31 +40,39 @@ def preprocess_image(data):  # don't change this
     return image
 
 
-representative_dataset = coco_dataset["train"].map(preprocess_image).batch(1).take(10)
+#
+# models
+#
 
-# quantize
-converter = tf.lite.TFLiteConverter.from_saved_model(str(model_path))
+model_path = weights_path / "efficientdet"
+if not model_path.exists():
+    model = hub.load("https://www.kaggle.com/models/tensorflow/efficientdet/TensorFlow2/d0/1")
+    tf.saved_model.save(model, str(model_path))
+model = tf.saved_model.load(str(model_path))
 
-
-def representative_data_gen():
-    for data in tqdm(representative_dataset):
-        yield [data]
-
-
-quant_model_path = weights_path / "mobilenetv2_int8.tflite"
+quant_model_path = weights_path / f"efficientdet_int8.tflite"
 if not quant_model_path.exists():
+    converter = tf.lite.TFLiteConverter.from_saved_model(str(model_path))
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    representative_dataset = coco_dataset["train"].map(preprocess_image).batch(1).take(10)
+
+    def representative_data_gen():
+        for data in tqdm(representative_dataset):
+            yield [data]
+
     converter.representative_dataset = representative_data_gen
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.uint8
     converter.inference_output_type = tf.uint8
     converter.experimental_new_converter = True
     tflite_model_quant = converter.convert()
-
     with open(quant_model_path, "wb") as f:
         f.write(tflite_model_quant)
 
-# evaluate
+#
+# eval
+#
+
 test_dataset = coco_dataset["test"].map(preprocess_image).batch(1).take(1)
 test_image = next(iter(test_dataset))[0]
 test_image = test_image.numpy()
