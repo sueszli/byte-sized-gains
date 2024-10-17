@@ -1,3 +1,10 @@
+"""
+docs:
+
+- general: https://ai.google.dev/edge/litert/models/model_optimization
+- int8: https://ai.google.dev/edge/litert/models/post_training_integer_quant
+"""
+
 import os
 from pathlib import Path
 

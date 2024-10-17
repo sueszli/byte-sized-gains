@@ -1,3 +1,5 @@
+# https://ai.google.dev/edge/litert/models/post_training_integer_quant
+
 import os
 from pathlib import Path
 
@@ -8,6 +10,12 @@ import tensorflow_hub as hub
 from tqdm import tqdm
 
 from utils import set_env
+import logging
+logging.getLogger("tensorflow").setLevel(logging.DEBUG)
+
+import tensorflow as tf
+import numpy as np
+print("tensorFlow version: ", tf.__version__)
 
 set_env(seed=42)
 output_path = Path.cwd() / "data"
@@ -19,9 +27,21 @@ os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
 
+exit()
+
+
 # save coco 2017
 dataset, info = tfds.load("coco/2017", with_info=True, data_dir=dataset_path)
-testset = dataset["test"]
+testset = dataset["test"].take(1500)
+trainset = dataset["train"].take(1500)
+
+train_labels = tf.data.Dataset.from_tensor_slices(list(map(lambda x: x['objects']['label'], trainset))).batch(1)
+train_images = tf.data.Dataset.from_tensor_slices(list(map(lambda x: x['image'], trainset))).batch(1)
+trainset = tf.data.Dataset.zip((train_images, train_labels))
+
+
+
+
 
 # save efficientdet model
 model = hub.load("https://www.kaggle.com/models/tensorflow/efficientdet/TensorFlow2/d0/1")
@@ -29,21 +49,47 @@ model_path = weights_path / "efficientdet"
 if not model_path.exists():
     tf.saved_model.save(model, str(model_path))
 
-print(f"model inputs shape {model.signatures['serving_default'].inputs}")
-print(f"model outputs shape {model.signatures['serving_default'].outputs}")
-print(f"model inputs dtype {model.signatures['serving_default'].inputs[0].dtype}")
-print(f"model outputs dtype {model.signatures['serving_default'].outputs[0].dtype}")
+tflite_model_path = weights_path / f"efficientdet_int8.tflite"
+if not tflite_model_path.exists():
 
-def preprocess(image): # requirements of efficientdet (don't change)
-    image = tf.image.resize(image, (512, 512))
-    image = tf.cast(image, tf.float32) / 255.0
-    image = tf.cast(image, tf.uint8)
-    image = tf.expand_dims(image, axis=0)
-    return image
+    def representative_data_gen():
+        for input_value in tqdm(tf.data.Dataset.from_tensor_slices(trainset).batch(1).take(10)):
+            yield [input_value]
+
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_data_gen
+    # Ensure that if any ops can't be quantized, the converter throws an error
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    # Set the input and output tensors to uint8 (APIs added in r2.3)
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
+
+    tflite_model_quant = converter.convert()
+    with open(tflite_model_path, 'wb') as f:
+        f.write(tflite_model_quant)
+
+# inference
+interpreter = tf.lite.Interpreter(model_content=tflite_model_quant)
+
+input_type = interpreter.get_input_details()[0]['dtype']
+print('input: ', input_type)
+output_type = interpreter.get_output_details()[0]['dtype']
+print('output: ', output_type)
+
+
+exit()
+
+# def preprocess(image): # requirements of efficientdet (don't change)
+#     image = tf.image.resize(image, (512, 512))
+#     image = tf.cast(image, tf.float32) / 255.0
+#     image = tf.cast(image, tf.uint8)
+#     image = tf.expand_dims(image, axis=0)
+#     return image
 
 # int8 quantize efficientdet model
 config = "int8"
-tflite_model_path = weights_path / f"efficientdet_{config}.tflite"
+
 
 if not tflite_model_path.exists():
     def representative_dataset_gen():
