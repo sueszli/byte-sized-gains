@@ -1,3 +1,4 @@
+import csv
 from types import SimpleNamespace
 import logging
 import os
@@ -95,6 +96,9 @@ def main(args):
 
         test_dataset = coco_dataset["test"].batch(1).take(args.sample_size)
         for data in tqdm(test_dataset):
+            output = {}
+
+            # inference
             test_image = preprocess_image(data)
             test_image = test_image[0]
             test_image = test_image.numpy()
@@ -106,15 +110,17 @@ def main(args):
                 else:
                     test_image = test_image - input_zero_point
             test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
-            
             start_time = tf.timestamp()
             interpreter.set_tensor(input_details["index"], test_image)
             interpreter.invoke()
             end_time = tf.timestamp()
             inference_time = end_time - start_time
+            output["inference_time"] = inference_time
 
+            # precision
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            print(outputs)
+            print(data["objects"].keys())
+            # print(outputs)
 
 
 if __name__ == "__main__":
