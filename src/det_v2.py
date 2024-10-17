@@ -1,8 +1,7 @@
 """
-docs:
+managed to convert the model to float32 and float16, but not int8 - decided to do that in a separate script
 
-- general: https://ai.google.dev/edge/litert/models/model_optimization
-- int8: https://ai.google.dev/edge/litert/models/post_training_integer_quant
+docs: https://ai.google.dev/edge/litert/models/model_optimization
 """
 
 import os

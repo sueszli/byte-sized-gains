@@ -1,3 +1,9 @@
+"""
+can't figure out why int8 quantization is not working.
+
+decided to start from scratch with a different model + following the official guide to the letter.
+"""
+
 import os
 from pathlib import Path
 
@@ -66,11 +72,6 @@ if not tflite_model_path.exists():
 interpreter = tf.lite.Interpreter(model_path=str(tflite_model_path))
 interpreter.allocate_tensors()
 
-input_details = interpreter.get_input_details()[0]
-print(f"New input_details: {input_details}")
-
-exit()
-
 input_type = interpreter.get_input_details()[0]['dtype']
 output_type = interpreter.get_output_details()[0]['dtype']
 input_details = interpreter.get_input_details()[0]
@@ -82,82 +83,28 @@ print(f"input_details: {input_details}")
 print(f"output_details: {output_details}")
 
 for sample in tqdm(testset):
+    # same as: test_image = preprocess(sample['image'])
     test_image = sample['image']
+    print(f"test_image: {test_image.shape}")
     test_image = tf.image.resize(test_image, (512, 512))
+    print(f"test_image after tf.image.resize: {test_image.shape}")
     test_image = tf.cast(test_image, tf.float32) / 255.0
+    print(f"test_image after tf.cast: {test_image.shape}")
     test_image = tf.cast(test_image, tf.uint8)
+    print(f"test_image after tf.cast: {test_image.shape}")
     test_image = tf.expand_dims(test_image, axis=0)
-    print(f"test_image after preprocessing: {test_image.shape}")
+    print(f"test_image after tf.expand_dims: {test_image.shape}")
 
+    # Check if the input type is quantized, then rescale input data to uint8
     if input_details['dtype'] == np.uint8:
         input_scale, input_zero_point = input_details["quantization"]
-        if input_scale != 0:
-            test_image = tf.cast(test_image, tf.float32)
-            test_image = test_image / input_scale + input_zero_point
-            test_image = tf.cast(test_image, tf.uint8)
-            print(f"test_image after rescale: {test_image.shape}")
-        else:
-            test_image = tf.cast(test_image, tf.uint8) + input_zero_point
-            print(f"test_image after rescale (is null): {test_image.shape}")
+        print(f"input_scale: {input_scale}")
+        print(f"input_zero_point: {input_zero_point}")
+        test_image = test_image / input_scale + input_zero_point
+        print(f"test_image after rescale: {test_image.shape}")
 
-    test_image = test_image.numpy().astype(input_details["dtype"])
+    test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
     print(f"test_image after np.expand_dims: {test_image.shape}")
-    
-    expected_shape = tuple(input_details['shape'])
-    print(f"expected_shape: {expected_shape}")
-    if test_image.shape != expected_shape:
-        test_image = np.reshape(test_image, expected_shape)
-        print(f"test_image after np.reshape: {test_image.shape}")
-
     interpreter.set_tensor(input_details["index"], test_image)
     interpreter.invoke()
     output = interpreter.get_tensor(output_details["index"])[0]
-
-
-
-
-
-
-
-
-
-# # inference
-# interpreter = tf.lite.Interpreter(model_path=str(tflite_model_path))
-# interpreter.allocate_tensors()
-
-# input_type = interpreter.get_input_details()[0]['dtype']
-# output_type = interpreter.get_output_details()[0]['dtype']
-# input_details = interpreter.get_input_details()[0]
-# output_details = interpreter.get_output_details()[0]
-
-# print(f"input_type: {input_type}")
-# print(f"output_type: {output_type}")
-# print(f"input_details: {input_details}")
-# print(f"output_details: {output_details}")
-
-# for sample in tqdm(testset):
-#     # same as: test_image = preprocess(sample['image'])
-#     test_image = sample['image']
-#     print(f"test_image: {test_image.shape}")
-#     test_image = tf.image.resize(test_image, (512, 512))
-#     print(f"test_image after tf.image.resize: {test_image.shape}")
-#     test_image = tf.cast(test_image, tf.float32) / 255.0
-#     print(f"test_image after tf.cast: {test_image.shape}")
-#     test_image = tf.cast(test_image, tf.uint8)
-#     print(f"test_image after tf.cast: {test_image.shape}")
-#     test_image = tf.expand_dims(test_image, axis=0)
-#     print(f"test_image after tf.expand_dims: {test_image.shape}")
-
-#     # Check if the input type is quantized, then rescale input data to uint8
-#     if input_details['dtype'] == np.uint8:
-#         input_scale, input_zero_point = input_details["quantization"]
-#         print(f"input_scale: {input_scale}")
-#         print(f"input_zero_point: {input_zero_point}")
-#         test_image = test_image / input_scale + input_zero_point
-#         print(f"test_image after rescale: {test_image.shape}")
-
-#     test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
-#     print(f"test_image after np.expand_dims: {test_image.shape}")
-#     interpreter.set_tensor(input_details["index"], test_image)
-#     interpreter.invoke()
-#     output = interpreter.get_tensor(output_details["index"])[0]
