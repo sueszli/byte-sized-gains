@@ -37,7 +37,7 @@ Tasks:
 
 - selecting a pre-trained object detection model of our choice for the COCO-2017 dataset
 - quantizing the model with LiteRT (formerly TensorFlow Lite) and the configurations [float32, float16, int8]
-- measuring the accuracy and computational cost
+- measuring the accuracy and computational cost (of > 1000 images)
     - Accuracy: average precision (see: https://cocodataset.org/#detection-eval) or pick up another one (...with a motivation!)
     - Inference time: seconds
     - Memory: model size (MB)
@@ -51,6 +51,15 @@ COCO dataset 2017 leaderboard:
 - https://github.com/ETH-DISCO/advx-bench/tree/main/analysis/model-selection
 
 DETR family performs the best. "facebook/detr-resnet-101-dc5" in particular seems to also generalize across multiple datasets and be both zero-shot and open vocabulary. (But theoretically we could take any model of our choice). Also this specific DETR model was trained on COCO 2017 dataset which should give it an advantage.
+
+But it turns out that compiling PyTorch models with LiteRT sucks and we can't resolve any of the issues even within a docker container, so we have to start from scratch using a random tensorflow model instead.
+
+- https://huggingface.co/models?pipeline_tag=object-detection&library=tf&sort=trending (empty)
+- https://www.kaggle.com/models?task=17074&framework=tensorFlow2
+
+One model that stands out here is: https://www.kaggle.com/models/tensorflow/efficientdet/
+
+It's both super lightweight, trained on COCA-2017.
 
 # Results 1.2
 

@@ -5,6 +5,7 @@ import secrets
 import time
 
 import numpy as np
+import tensorflow as tf
 import torch
 
 
@@ -25,6 +26,8 @@ def set_env(seed: int = -1) -> None:
     torch.set_float32_matmul_precision("high")
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
+    tf.config.experimental.enable_op_determinism()
 
 
 def get_device(disable_mps=False) -> str:
