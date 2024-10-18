@@ -81,16 +81,27 @@ But given the experimental nature of LiteRT and the lack of both community and d
 
 #### Methodology
 
-We ran our benchmarks on a consumer MacBook M2 Pro and the latest Tensorflow Version 2.17.0 on macOS 14.6.1 23G93 arm64 hosted by a Mac14,10
-with Kernel version 23.6.0 and 16384MiB of memory.
+For the experiment we used the MobileNetV2 model as our base. Our methodology involved quantizing this model using LiteRT with three different configurations: float32, float16, and int8. The float32 configuration serves as our baseline, representing the original model without any quantization. The float16 and int8 configurations represent different levels of quantization, with int8 being the most aggressive in terms of reducing model size and potentially inference speed.
+
+For the int8 quantization, we used a representative dataset of 100 samples from the COCO 2017 training set. This step is crucial for calibrating the quantization process, ensuring that the reduced precision can still accurately represent the distribution of activations in the model.
+
+We then evaluated these quantized models on a subset of 1500 images from the COCO 2017 validation set. For each image, we preprocessed it to match the input requirements of our model, including resizing to 300x300 pixels and normalizing the pixel values.
+
+One of the more complex parts of our implementation is the computation of precision. We implemented a function to calculate the Intersection over Union (IoU) between predicted and ground truth bounding boxes. This IoU is then used to determine true positives and false positives, which are essential for computing precision. We set a very low IoU threshold of 0.01 to be more lenient in our evaluation, considering the potential loss in accuracy due to quantization.
+
+We also implemented a normalization function for bounding boxes, ensuring that all coordinates are within the [0, 1] range. This normalization is important for consistent evaluation across different image sizes.
+
+For each quantization configuration, we ran inference on our test set and measured both the inference time and precision. The inference time gives us an indication of the model's speed, while precision tells us about its accuracy in detecting objects.
+
+One of the challenges we faced was dealing with the different output formats of the quantized models, particularly for the int8 model. We implemented a dequantization step to convert the int8 outputs back to floating-point values for consistent evaluation across all configurations.
+
+We also implemented a filtering step based on a confidence threshold, allowing us to adjust the trade-off between precision and recall. However, for this experiment, we set the confidence threshold to 0.0, effectively considering all detections.
+
+The results of our experiments are saved in a CSV file, allowing for easy analysis and comparison of the different quantization configurations. This approach enables us to assess the impact of quantization on both model size and performance, providing valuable insights into the trade-offs involved in model optimization for edge devices.
+
+We ran our benchmarks on a consumer MacBook M2 Pro and the latest Tensorflow Version 2.17.0 on macOS 14.6.1 23G93 arm64 hosted by a Mac14,10 with Kernel version 23.6.0 and 16384MiB of memory.
 
 All python dependencies were compiled using `pip-compile` and dumped out of a virtual environment for reproducibility. A docker container is provided for cross platform builds.
-
-We quantized the mobilenet model with LiteRT and the configurations [float32, float16, int8].
-
-The experiment was conducted as follows:
-
-... insert some parts where perplexity explains code
 
 #### Results
 
@@ -109,11 +120,11 @@ Next we want to gain a better understanding of inference speed vs. precision as 
 - float16 : 0.0232883892068324
 - float32 : -0.0365188366830796
 
-This is because the changes in inference speed were really marginal and in the 1e-2 range, as visualized in the logarithmic boxplot of all inference times (add ref to plot). The increase from a float16 to a fully integer quantized model however is substantial in the given tolerance range.
+This is because the changes in inference speed were really marginal and in the 1e-2 range, as visualized in the logarithmic boxplot of all inference times. The increase from a float16 to a fully integer quantized model however is substantial in the given tolerance range.
 
 ![ODM: Logarithmic Inference Time Boxplot](docs/assets/det-plot2.png)
 
-The IoU@0.01 precision however does show fluctuations as visualized in the scatterplot and boxplots (add ref to plot). 
+The IoU@0.01 precision however does show fluctuations as visualized in the scatterplot and boxplots. 
 
 However very counter intuitively, as we increase the model size and granularity the performance seems to worsen.
 
