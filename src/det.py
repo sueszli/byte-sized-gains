@@ -30,9 +30,9 @@ def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_th
     false_positives = 0
 
     def compute_iou(box1, box2):
-        # Convert [ymin, xmin, ymax, xmax] to [x1, y1, x2, y2]
-        b1_x1, b1_y1, b1_x2, b1_y2 = box1[1], box1[0], box1[3], box1[2]
-        b2_x1, b2_y1, b2_x2, b2_y2 = box2[1], box2[0], box2[3], box2[2]
+        # Correct implementation of IOU calculation
+        b1_y1, b1_x1, b1_y2, b1_x2 = box1
+        b2_y1, b2_x1, b2_y2, b2_x2 = box2
 
         # Calculate intersection area
         inter_x1 = max(b1_x1, b2_x1)
@@ -172,21 +172,23 @@ def main(args):
             pred_bboxes = outputs[0]  # [ymin, xmin, ymax, xmax] in range
             pred_scores = outputs[4]
             pred_classes = outputs[5]
-
-            # filter by confidence threshold
-            confidence_threshold = args.confidence_threshold
-            max_scores = np.max(pred_scores, axis=-1)  # Shape: (1, 100)
-            mask = max_scores > confidence_threshold  # Shape: (1, 100)
-            pred_classes = pred_classes[mask]
-            pred_scores = max_scores[mask]
-            pred_bboxes = pred_bboxes[:, :100][mask]  # assume first 100 to align
-            pred_bboxes = pred_bboxes.reshape(1, -1, 4)
-            pred_classes = pred_classes.reshape(1, -1)
-            pred_scores = pred_scores.reshape(1, -1)
-
-            # compute precision
             precision = compute_precision(pred_classes[0], pred_bboxes[0], true_classes.numpy()[0], true_bboxes.numpy()[0], args.iou_threshold)
             print(f"precision: {precision}, inference time: {inference_time:.2f}s")
+
+            # filter by confidence threshold
+            # confidence_threshold = args.confidence_threshold
+            # max_scores = np.max(pred_scores, axis=-1)  # Shape: (1, 100)
+            # mask = max_scores > confidence_threshold  # Shape: (1, 100)
+            # pred_classes = pred_classes[mask]
+            # pred_scores = max_scores[mask]
+            # pred_bboxes = pred_bboxes[:, :100][mask]  # assume first 100 to align
+            # pred_bboxes = pred_bboxes.reshape(1, -1, 4)
+            # pred_classes = pred_classes.reshape(1, -1)
+            # pred_scores = pred_scores.reshape(1, -1)
+
+            # compute precision
+            # precision = compute_precision(pred_classes[0], pred_bboxes[0], true_classes.numpy()[0], true_bboxes.numpy()[0], args.iou_threshold)
+            # print(f"precision: {precision}, inference time: {inference_time:.2f}s")
 
 
 def print_outputdetails(outputs, output_details):
