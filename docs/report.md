@@ -81,7 +81,7 @@ Given the experimental nature of LiteRT and the lack of both community and docum
 
 #### Methodology
 
-For the experiment we used the MobileNetV2 model as our base. Our methodology involved quantizing this model using LiteRT with three different configurations: float32, float16, and int8. The float32 configuration serves as our baseline, representing the original model without any quantization. The float16 and int8 configurations represent different levels of quantization, with int8 being the most aggressive in terms of reducing model size and potentially inference speed.
+For the experiment we used the MobileNetV2 model as our base. Our methodology involved quantizing this model using LiteRT with three different configurations: float32, float16, and int8. These represent different levels of quantization, with int8 being the most aggressive in terms of reducing model size and potentially inference speed.
 
 For the int8 quantization, we used a representative dataset of 100 samples from the COCO 2017 training set. This step is crucial for calibrating the quantization process, ensuring that the reduced precision can still accurately represent the distribution of activations in the model.
 
