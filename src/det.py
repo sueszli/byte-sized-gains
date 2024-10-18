@@ -25,45 +25,6 @@ os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
 
 
-def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
-    true_positives = 0
-    false_positives = 0
-
-    def compute_iou(box1, box2):
-        # Correct implementation of IOU calculation
-        b1_y1, b1_x1, b1_y2, b1_x2 = box1
-        b2_y1, b2_x1, b2_y2, b2_x2 = box2
-
-        # Calculate intersection area
-        inter_x1 = max(b1_x1, b2_x1)
-        inter_y1 = max(b1_y1, b2_y1)
-        inter_x2 = min(b1_x2, b2_x2)
-        inter_y2 = min(b1_y2, b2_y2)
-        inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
-
-        # Calculate union area
-        b1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
-        b2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
-        union_area = b1_area + b2_area - inter_area
-
-        # Calculate IoU
-        iou = inter_area / union_area if union_area > 0 else 0
-        return iou
-
-    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
-        matched = False
-        for true_label, true_bbox in zip(true_labels, true_bboxes):
-            if pred_label == true_label and compute_iou(pred_bbox, true_bbox) >= iou_threshold:
-                true_positives += 1
-                matched = True
-                break
-        if not matched:
-            false_positives += 1
-
-    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
-    return precision
-
-
 def main(args):
     #
     # data
@@ -137,8 +98,7 @@ def main(args):
         output_details = interpreter.get_output_details()
         input_shape = input_details["shape"]
 
-        # test set doesn't have bboxes
-        assert args.sample_size <= len(coco_dataset["validation"])
+        assert args.sample_size <= len(coco_dataset["validation"]) # test set doesn't have bboxes
         test_dataset = coco_dataset["validation"].batch(1).take(args.sample_size)
         for data in tqdm(test_dataset):
             # benchmark
@@ -158,37 +118,69 @@ def main(args):
             interpreter.invoke()
             end_time = tf.timestamp()
             inference_time = end_time - start_time
-
-            # inference
-            true_bboxes = data["objects"]["bbox"]
-            true_classes = data["objects"]["label"]
-
+            
+            # get output
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
             if config == "int8":  # dequantize
                 for i, output in enumerate(output_details):
                     scale, zero_point = output["quantization"]
                     if scale != 0:
                         outputs[i] = (outputs[i].astype(np.float32) - zero_point) * scale
-            pred_bboxes = outputs[0]  # [ymin, xmin, ymax, xmax] in range
-            pred_scores = outputs[4]
-            pred_classes = outputs[5]
-            precision = compute_precision(pred_classes[0], pred_bboxes[0], true_classes.numpy()[0], true_bboxes.numpy()[0], args.iou_threshold)
-            print(f"precision: {precision}, inference time: {inference_time:.2f}s")
 
-            # filter by confidence threshold
-            # confidence_threshold = args.confidence_threshold
-            # max_scores = np.max(pred_scores, axis=-1)  # Shape: (1, 100)
-            # mask = max_scores > confidence_threshold  # Shape: (1, 100)
-            # pred_classes = pred_classes[mask]
-            # pred_scores = max_scores[mask]
-            # pred_bboxes = pred_bboxes[:, :100][mask]  # assume first 100 to align
-            # pred_bboxes = pred_bboxes.reshape(1, -1, 4)
-            # pred_classes = pred_classes.reshape(1, -1)
-            # pred_scores = pred_scores.reshape(1, -1)
+            # limit to valid ones
+            num_detections = int(outputs[2][0])
+            boxes = outputs[0][0][:num_detections] # [ymin, xmin, ymax, xmax]
+            classes = np.round(outputs[5][0][:num_detections]).astype(int)
+            scores = outputs[4][0][:num_detections]
 
-            # compute precision
-            # precision = compute_precision(pred_classes[0], pred_bboxes[0], true_classes.numpy()[0], true_bboxes.numpy()[0], args.iou_threshold)
-            # print(f"precision: {precision}, inference time: {inference_time:.2f}s")
+            true_boxes = data["objects"]["bbox"][0]  # coco 2017 format
+            true_classes = data["objects"]["label"][0].numpy()
+            true_boxes = [convert_coco_bbox(box.numpy(), 300, 300) for box in data["objects"]["bbox"][0]]
+
+            print(f"{true_boxes=}")
+            print(f"{true_classes=}")
+            print(f"{boxes=}")
+            print(f"{classes=}")
+            print("\n" * 4)
+
+            precision = compute_precision(classes, boxes, true_classes, true_boxes, args.iou_threshold)
+            print(f"{precision:.10f}")
+
+
+def convert_coco_bbox(bbox, img_width, img_height):
+    x, y, width, height = bbox
+    return [y/img_height, x/img_width, (y+height)/img_height, (x+width)/img_width]
+
+
+def calculate_iou(box1, box2):
+    y1_max = max(box1[0], box2[0])
+    x1_max = max(box1[1], box2[1])
+    y2_min = min(box1[2], box2[2])
+    x2_min = min(box1[3], box2[3])
+    
+    intersection = max(0, x2_min - x1_max) * max(0, y2_min - y1_max)
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    
+    iou = intersection / (area1 + area2 - intersection + 1e-6)
+    return iou
+
+def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
+    true_positives = 0
+    false_positives = 0
+    
+    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
+        matched = False
+        for true_label, true_bbox in zip(true_labels, true_bboxes):
+            if pred_label == true_label and calculate_iou(pred_bbox, true_bbox) >= iou_threshold:
+                true_positives += 1
+                matched = True
+                break
+        if not matched:
+            false_positives += 1
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    return precision
 
 
 def print_outputdetails(outputs, output_details):
