@@ -1,3 +1,8 @@
+"""
+for some reason the precision is always zero
+"""
+
+
 from types import SimpleNamespace
 import logging
 import os
@@ -27,16 +32,23 @@ def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_th
     false_positives = 0
 
     def compute_iou(box1, box2):
-        # convert [x, y, w, h] to [x1, y1, x2, y2]
-        b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[0] + box1[2], box1[1] + box1[3]
-        b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[0] + box2[2], box2[1] + box2[3]
+        # Convert [ymin, xmin, ymax, xmax] to [x1, y1, x2, y2]
+        b1_x1, b1_y1, b1_x2, b1_y2 = box1[1], box1[0], box1[3], box1[2]
+        b2_x1, b2_y1, b2_x2, b2_y2 = box2[1], box2[0], box2[3], box2[2]
 
-        inter_area = max(0, min(b1_x2, b2_x2) - max(b1_x1, b2_x1)) * max(0, min(b1_y2, b2_y2) - max(b1_y1, b2_y1))
+        # Calculate intersection area
+        inter_x1 = max(b1_x1, b2_x1)
+        inter_y1 = max(b1_y1, b2_y1)
+        inter_x2 = min(b1_x2, b2_x2)
+        inter_y2 = min(b1_y2, b2_y2)
+        inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
 
+        # Calculate union area
         b1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
         b2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
         union_area = b1_area + b2_area - inter_area
 
+        # Calculate IoU
         iou = inter_area / union_area if union_area > 0 else 0
         return iou
 
@@ -160,10 +172,6 @@ def main(args):
             pred_bboxes = outputs[0] # [ymin, xmin, ymax, xmax] in range 
             pred_scores = outputs[4]
             pred_classes = outputs[5]
-
-            print(f"pred_bboxes: {pred_bboxes=}")
-            print(f"pred_scores: {pred_scores=}")
-            print(f"pred_classes: {pred_classes=}")
         
             # filter by confidence threshold
             confidence_threshold = args.confidence_threshold
@@ -176,6 +184,9 @@ def main(args):
             pred_classes = pred_classes.reshape(1, -1)
             pred_scores = pred_scores.reshape(1, -1)
 
+            # compute precision
+            precision = compute_precision(pred_classes[0], pred_bboxes[0], true_classes.numpy()[0], true_bboxes.numpy()[0], args.iou_threshold)
+            print(f"precision: {precision}, inference time: {inference_time:.2f}s")
 
 
 def print_outputdetails(outputs, output_details):
@@ -190,7 +201,7 @@ def print_outputdetails(outputs, output_details):
 if __name__ == "__main__":
     args = SimpleNamespace(
         int8_train_size = 100,
-        sample_size = 50, # set to 1500 for full evaluation
+        sample_size = 10, # set to 1500 for full evaluation
         confidence_threshold=0.5,
         iou_threshold=0.5,
     )
