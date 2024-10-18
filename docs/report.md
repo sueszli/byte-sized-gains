@@ -86,6 +86,14 @@ GPU: Apple M2 Pro
 Memory: 16384MiB
 ```
 
+correlation between efficiency and effectiveness:
+
+```
+perf correlation for int8 : -0.0236756526195283
+perf correlation for float16 : 0.0232883892068324
+perf correlation for float32 : -0.0365188366830796
+```
+
 We started this task off by aiming for the stars and comparing the best models we could find on the public "papers with code" leaderboard for the COCO 2017 dataset [^coco]. Then we ran our own experiments to find the most representative models from each architecture family [^family]. We then noticed the DETR family to perform the best, particularly the "facebook/detr-resnet-101-dc5" model, as it also generalizes across multiple datasets and is both zero-shot and open vocabulary. This specific DETR model additionally was trained on COCO 2017 dataset which should give it an advantage.
 
 [^coco]: https://paperswithcode.com/sota/object-detection-on-coco
