@@ -2,11 +2,10 @@
 for some reason the precision is always zero
 """
 
-
-from types import SimpleNamespace
 import logging
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import kagglehub
 import numpy as np
@@ -14,7 +13,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from tqdm import tqdm
 
-from utils import set_env
 
 logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 # set_env(seed=42)
@@ -67,9 +65,9 @@ def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_th
 
 
 def main(args):
-    # 
+    #
     # data
-    # 
+    #
 
     def preprocess_image(data):  # don't change this
         image = tf.image.resize(data["image"], (300, 300))
@@ -79,9 +77,9 @@ def main(args):
 
     coco_dataset, coco_info = tfds.load("coco/2017", with_info=True, data_dir=dataset_path)
 
-    # 
+    #
     # models
-    # 
+    #
 
     # original model
     model_path = weights_path / "mobilenetv2"
@@ -95,7 +93,7 @@ def main(args):
     configs = ["int8", "float16", "float32"]
     for config in configs:
         quant_model_path = weights_path / f"mobilenetv2_{config}.tflite"
-        
+
         if not quant_model_path.exists():
             converter = tf.lite.TFLiteConverter.from_saved_model(str(model_path))
 
@@ -105,9 +103,11 @@ def main(args):
                 converter.optimizations = [tf.lite.Optimize.DEFAULT]
                 converter.target_spec.supported_types = [tf.float16]
             elif config == "int8":
+
                 def representative_data_gen():
                     for data in tqdm(representative_dataset):
                         yield [data]
+
                 converter.optimizations = [tf.lite.Optimize.DEFAULT]
                 representative_dataset = coco_dataset["train"].map(preprocess_image).batch(1).take(args.int8_train_size)
                 converter.representative_dataset = representative_data_gen
@@ -122,9 +122,9 @@ def main(args):
 
         print(f"{config} model: {quant_model_path.stat().st_size / 1024 / 1024:.2f} MB")
 
-    # 
+    #
     # eval
-    # 
+    #
 
     configs = ["int8", "float16", "float32"]
     for config in configs:
@@ -164,22 +164,22 @@ def main(args):
             true_classes = data["objects"]["label"]
 
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            if config == "int8": # dequantize
+            if config == "int8":  # dequantize
                 for i, output in enumerate(output_details):
-                    scale, zero_point = output['quantization']
+                    scale, zero_point = output["quantization"]
                     if scale != 0:
                         outputs[i] = (outputs[i].astype(np.float32) - zero_point) * scale
-            pred_bboxes = outputs[0] # [ymin, xmin, ymax, xmax] in range 
+            pred_bboxes = outputs[0]  # [ymin, xmin, ymax, xmax] in range
             pred_scores = outputs[4]
             pred_classes = outputs[5]
-        
+
             # filter by confidence threshold
             confidence_threshold = args.confidence_threshold
             max_scores = np.max(pred_scores, axis=-1)  # Shape: (1, 100)
             mask = max_scores > confidence_threshold  # Shape: (1, 100)
             pred_classes = pred_classes[mask]
             pred_scores = max_scores[mask]
-            pred_bboxes = pred_bboxes[:, :100][mask] # assume first 100 to align
+            pred_bboxes = pred_bboxes[:, :100][mask]  # assume first 100 to align
             pred_bboxes = pred_bboxes.reshape(1, -1, 4)
             pred_classes = pred_classes.reshape(1, -1)
             pred_scores = pred_scores.reshape(1, -1)
@@ -200,8 +200,8 @@ def print_outputdetails(outputs, output_details):
 
 if __name__ == "__main__":
     args = SimpleNamespace(
-        int8_train_size = 100,
-        sample_size = 10, # set to 1500 for full evaluation
+        int8_train_size=100,
+        sample_size=10,  # set to 1500 for full evaluation
         confidence_threshold=0.5,
         iou_threshold=0.5,
     )
