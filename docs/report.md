@@ -112,7 +112,7 @@ The quantized models had the following memory footprints:
 - float16 model: 12.17 MB
 - int8 model: 7.21 MB
 
-Meaning with each of our selected quantization steps the memory footprint halved. This os to be expected and also serves as a little sanity check for our model quantizer.
+Meaning with each of our selected quantization steps the memory footprint almost halved. This os to be expected and also serves as a little sanity check for our model quantizer.
 
 Next we want to gain a better understanding of inference speed vs. precision as the intersection over union (IoU@0.01). We observed the following correlations between predictive efficiency and effectiveness:
 
