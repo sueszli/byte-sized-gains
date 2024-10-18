@@ -62,6 +62,12 @@ Tasks:
 
 -->
 
+![plot](docs/assets/det-plot0.png)
+
+![plot](docs/assets/det-plot1.png)
+
+![plot](docs/assets/det-plot2.png)
+
 model sizes:
 
 ```

@@ -1,3 +1,4 @@
+import time
 import csv
 import logging
 import os
@@ -167,11 +168,13 @@ def main(args):
                 else:
                     test_image = test_image - input_zero_point
             test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
-            start_time = tf.timestamp()
+            
+            # benchmark (don't use tf.timestamp)
             interpreter.set_tensor(input_details["index"], test_image)
+            start_time = time.time()
             interpreter.invoke()
-            end_time = tf.timestamp()
-            inference_time = (end_time - start_time).numpy().item()
+            end_time = time.time()
+            inference_time = end_time - start_time
 
             # dequantize
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
