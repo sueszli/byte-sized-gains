@@ -112,9 +112,9 @@ The quantized models had the following memory footprints:
 - float16 model: 12.17 MB
 - int8 model: 7.21 MB
 
-Meaning with each of our selected quantization steps the memory footprint almost halved. This os to be expected and also serves as a little sanity check for our model quantizer.
+Meaning with each of our selected quantization steps the memory footprint almost halved. This is to be expected and also serves as a little sanity check for our model quantizer.
 
-Next we want to gain a better understanding of inference speed vs. precision as the intersection over union (IoU@0.01). We observed the following correlations between predictive efficiency and effectiveness:
+Next we want to gain a better understanding of inference speed vs. precision as the intersection over union (IoU@0.01). We derived the following correlations between predictive efficiency and effectiveness:
 
 - int8 : -0.0236756526195283
 - float16 : 0.0232883892068324
@@ -126,15 +126,15 @@ This is because the changes in inference speed were really marginal and in the 1
 
 The IoU@0.01 precision however does show fluctuations as visualized in the scatterplot and boxplots. 
 
-However very counter intuitively, as we increase the model size and granularity the performance seems to worsen.
+However surprisingly, as we increase the model size and operation granularity the accuracy seems to worsen.
 
 ![ODM: Inference Time vs. IoU Precision Scatterplot](docs/assets/det-plot1.png)
 
 ![ODM: Inference Time vs. IoU Precision Boxplots](docs/assets/det-plot0.png)
 
-Given the counter intuitive results we observed in the benchmarks there is a realistic chance that the IoU implementation is faulty, given how bad the models performed and how low we set the area of intersection to be to count as a hit. However the same algorithm was also used for our PyTorch benchmark and lead to sane results. We were unable to find the cause.
+Given the counter intuitive properties we observed in the benchmarks there is a realistic chance that the IoU implementation is incorrect. However the same algorithm was also used for our PyTorch benchmark and lead to sane results. We were unable to find the cause of this disparity.
 
-In conclusion: The results are inconclusive. Further inspection to is necessary to validate our counter intuitive findings.
+In conclusion: The results are inconclusive. Further inspection to is necessary to validate our findings.
 
 \newpage
 
