@@ -14,8 +14,6 @@ geometry:
 toc: true
 ---
 
----
-
 <!--
 
 Table of Contents:
@@ -36,7 +34,7 @@ Table of Contents:
 
 -->
 
-# Introduction & Background
+# Introduction
 
 In recent years, object detection models (ODMs) and large language models (LLMs) have revolutionized computer vision and natural language processing, respectively. These advanced neural networks have found applications across various domains, from autonomous vehicles and surveillance systems to chatbots and content generation. However, the increasing complexity and size of these models have led to significant computational and energy demands, posing challenges for widespread deployment and raising concerns about their environmental impact.
 
@@ -46,7 +44,7 @@ Our project focuses on applying advanced quantization techniques to both ODMs an
 
 The quantization of ODMs presents unique challenges due to the spatial nature of visual data and the need for precise localization in detection tasks. For LLMs, the primary obstacles lie in preserving the nuanced relationships between words and maintaining coherence across long sequences. Our project these model-specific issues while exploring commonalities in quantization strategies that can be applied across both domains. Through this project, we seek to demonstrate that quantization can play a crucial role in making advanced machine learning models more accessible and environmentally sustainable. By reducing the computational and energy requirements of ODMs and LLMs, we aim to pave the way for their widespread adoption in eco-conscious applications, ultimately contributing to global efforts in mitigating climate change and promoting sustainable technological development.
 
-# Experiments & Results
+# Methodology & Results
 
 ## Results 1.1
 
