@@ -77,7 +77,7 @@ We started from scratch, but this time instead of looking for state-of-the-art p
 
 We spent 2 full working days trying to mitigate these issues but ended up pivoting again, but this time to `mobilenet_v2` as our base model.
 
-But given the experimental nature of LiteRT and the lack of both community and documentation especially the full integer quantization was very tedious, as both the quantization of weights and the inputs and outputs resulted in many complications. Additionally the authors auf this accelerator module didn't implement more fine granular error messages, causing shotgun debugging to be the only viable option.
+But given the experimental nature of LiteRT and the lack of both community and documentation especially the full integer quantization was very tedious, as both the quantization of weights and the inputs and outputs resulted in many complications. Additionally the authors auf this accelerator module didn't implement more fine granular error messages, causing shotgun debugging to be the only viable option whenever issues emerged 
 
 #### Methodology
 
