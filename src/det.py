@@ -12,7 +12,7 @@ from tqdm import tqdm
 from utils import set_env
 
 logging.getLogger("tensorflow").setLevel(logging.DEBUG)
-set_env(seed=42)
+# set_env(seed=42)
 output_path = Path.cwd() / "data"
 dataset_path = Path.cwd() / "datasets"
 weights_path = Path.cwd() / "weights"
@@ -20,6 +20,38 @@ weights_path = Path.cwd() / "weights"
 os.makedirs(output_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
+
+
+def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
+    true_positives = 0
+    false_positives = 0
+
+    def compute_iou(box1, box2):
+        # convert [x, y, w, h] to [x1, y1, x2, y2]
+        b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[0] + box1[2], box1[1] + box1[3]
+        b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[0] + box2[2], box2[1] + box2[3]
+
+        inter_area = max(0, min(b1_x2, b2_x2) - max(b1_x1, b2_x1)) * max(0, min(b1_y2, b2_y2) - max(b1_y1, b2_y1))
+
+        b1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
+        b2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
+        union_area = b1_area + b2_area - inter_area
+
+        iou = inter_area / union_area if union_area > 0 else 0
+        return iou
+
+    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
+        matched = False
+        for true_label, true_bbox in zip(true_labels, true_bboxes):
+            if pred_label == true_label and compute_iou(pred_bbox, true_bbox) >= iou_threshold:
+                true_positives += 1
+                matched = True
+                break
+        if not matched:
+            false_positives += 1
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    return precision
 
 
 def main(args):
@@ -48,7 +80,7 @@ def main(args):
     print(f"original model: {sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file()) / 1024 / 1024:.2f} MB")
 
     # quantized models
-    configs = ["float32", "float16", "int8"]
+    configs = ["int8", "float16", "float32"]
     for config in configs:
         quant_model_path = weights_path / f"mobilenetv2_{config}.tflite"
         
@@ -82,7 +114,7 @@ def main(args):
     # eval
     # 
 
-    configs = ["float32", "float16", "int8"]
+    configs = ["int8", "float16", "float32"]
     for config in configs:
         print(f"evaluating {config} model")
 
@@ -93,11 +125,11 @@ def main(args):
         output_details = interpreter.get_output_details()
         input_shape = input_details["shape"]
 
-        test_dataset = coco_dataset["test"].batch(1).take(args.sample_size)
+        # test set doesn't have bboxes
+        assert args.sample_size <= len(coco_dataset["validation"])
+        test_dataset = coco_dataset["validation"].batch(1).take(args.sample_size)
         for data in tqdm(test_dataset):
-            output = {}
-
-            # inference
+            # benchmark
             test_image = preprocess_image(data)
             test_image = test_image[0]
             test_image = test_image.numpy()
@@ -114,19 +146,52 @@ def main(args):
             interpreter.invoke()
             end_time = tf.timestamp()
             inference_time = end_time - start_time
-            output["inference_time"] = inference_time
 
-            # precision
+            # inference
+            true_bboxes = data["objects"]["bbox"]
+            true_classes = data["objects"]["label"]
+
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            ground_truth = data["objects"]["bbox"]
-            print(ground_truth)
+            if config == "int8": # dequantize
+                for i, output in enumerate(output_details):
+                    scale, zero_point = output['quantization']
+                    if scale != 0:
+                        outputs[i] = (outputs[i].astype(np.float32) - zero_point) * scale
+            pred_bboxes = outputs[0] # [ymin, xmin, ymax, xmax] in range 
+            pred_scores = outputs[4]
+            pred_classes = outputs[5]
+
+            print(f"pred_bboxes: {pred_bboxes=}")
+            print(f"pred_scores: {pred_scores=}")
+            print(f"pred_classes: {pred_classes=}")
+        
+            # filter by confidence threshold
+            confidence_threshold = args.confidence_threshold
+            max_scores = np.max(pred_scores, axis=-1)  # Shape: (1, 100)
+            mask = max_scores > confidence_threshold  # Shape: (1, 100)
+            pred_classes = pred_classes[mask]
+            pred_scores = max_scores[mask]
+            pred_bboxes = pred_bboxes[:, :100][mask] # assume first 100 to align
+            pred_bboxes = pred_bboxes.reshape(1, -1, 4)
+            pred_classes = pred_classes.reshape(1, -1)
+            pred_scores = pred_scores.reshape(1, -1)
+
+
+
+def print_outputdetails(outputs, output_details):
+    for i, output in enumerate(output_details):
+        print(f"Output {i}:")
+        print(f"  Name: {output['name']}")
+        print(f"  Shape: {output['shape']}")
+        print(f"  Values: {outputs[i]}")
+    print("-" * 80)
+
 
 if __name__ == "__main__":
     args = SimpleNamespace(
         int8_train_size = 100,
-        sample_size = 1500,
-
-        inference_threshold=0.5,
-        precision_threshold=0.5,
+        sample_size = 50, # set to 1500 for full evaluation
+        confidence_threshold=0.5,
+        iou_threshold=0.5,
     )
     main(args)
