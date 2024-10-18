@@ -1,7 +1,4 @@
-"""
-for some reason the precision is always zero
-"""
-
+import csv
 import logging
 import os
 from pathlib import Path
@@ -13,9 +10,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from tqdm import tqdm
 
-
 logging.getLogger("tensorflow").setLevel(logging.DEBUG)
-# set_env(seed=42)
 output_path = Path.cwd() / "data"
 dataset_path = Path.cwd() / "datasets"
 weights_path = Path.cwd() / "weights"
@@ -23,6 +18,66 @@ weights_path = Path.cwd() / "weights"
 os.makedirs(output_path, exist_ok=True)
 os.makedirs(dataset_path, exist_ok=True)
 os.makedirs(weights_path, exist_ok=True)
+
+
+def normalize_boxes(boxes, input_shape):
+    height, width = input_shape[1], input_shape[2]
+    normalized_boxes = []
+
+    for box in boxes:
+        ymin, xmin, ymax, xmax = box
+
+        # normalize coordinates
+        xmin_norm = max(0, min(1, xmin / width))
+        ymin_norm = max(0, min(1, ymin / height))
+        xmax_norm = max(0, min(1, xmax / width))
+        ymax_norm = max(0, min(1, ymax / height))
+
+        # reorder to [xmin, ymin, xmax, ymax]
+        normalized_box = [xmin_norm, ymin_norm, xmax_norm, ymax_norm]
+        normalized_boxes.append(normalized_box)
+
+    return normalized_boxes
+
+
+def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
+    true_positives = 0
+    false_positives = 0
+
+    def compute_iou(box1, box2):
+        y1_max = max(box1[0], box2[0])
+        x1_max = max(box1[1], box2[1])
+        y2_min = min(box1[2], box2[2])
+        x2_min = min(box1[3], box2[3])
+
+        intersection = max(0, x2_min - x1_max) * max(0, y2_min - y1_max)
+        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+        iou = intersection / (area1 + area2 - intersection + 1e-6)
+        return iou
+
+    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
+        matched = False
+        for true_label, true_bbox in zip(true_labels, true_bboxes):
+            if pred_label == true_label and compute_iou(pred_bbox, true_bbox) >= iou_threshold:
+                true_positives += 1
+                matched = True
+                break
+        if not matched:
+            false_positives += 1
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    return precision
+
+
+def print_outputdetails(outputs, output_details):  # debug
+    for i, output in enumerate(output_details):
+        print(f"Output {i}:")
+        print(f"  Name: {output['name']}")
+        print(f"  Shape: {output['shape']}")
+        print(f"  Values: {outputs[i]}")
+    print("-" * 80)
 
 
 def main(args):
@@ -98,10 +153,9 @@ def main(args):
         output_details = interpreter.get_output_details()
         input_shape = input_details["shape"]
 
-        assert args.sample_size <= len(coco_dataset["validation"]) # test set doesn't have bboxes
+        assert args.sample_size <= len(coco_dataset["validation"])  # test set doesn't have bboxes
         test_dataset = coco_dataset["validation"].batch(1).take(args.sample_size)
         for data in tqdm(test_dataset):
-            # benchmark
             test_image = preprocess_image(data)
             test_image = test_image[0]
             test_image = test_image.numpy()
@@ -117,86 +171,53 @@ def main(args):
             interpreter.set_tensor(input_details["index"], test_image)
             interpreter.invoke()
             end_time = tf.timestamp()
-            inference_time = end_time - start_time
-            
-            # get output
+            inference_time = (end_time - start_time).numpy().item()
+
+            # dequantize
             outputs = [interpreter.get_tensor(output["index"]) for output in output_details]
-            if config == "int8":  # dequantize
+            if config == "int8":
                 for i, output in enumerate(output_details):
                     scale, zero_point = output["quantization"]
                     if scale != 0:
                         outputs[i] = (outputs[i].astype(np.float32) - zero_point) * scale
 
-            # limit to valid ones
+            # limit to num_detections
             num_detections = int(outputs[2][0])
-            boxes = outputs[0][0][:num_detections] # [ymin, xmin, ymax, xmax]
-            classes = np.round(outputs[5][0][:num_detections]).astype(int)
-            scores = outputs[4][0][:num_detections]
+            boxes = outputs[0][0][:num_detections].tolist()  # [ymin, xmin, ymax, xmax]
+            classes = list(map(int, outputs[5][0][:num_detections].tolist()))
+            scores = outputs[6][0][:num_detections].tolist()
 
-            true_boxes = data["objects"]["bbox"][0]  # coco 2017 format
-            true_classes = data["objects"]["label"][0].numpy()
-            true_boxes = [convert_coco_bbox(box.numpy(), 300, 300) for box in data["objects"]["bbox"][0]]
+            # filter by confidence threshold
+            boxes = [box for box, score in zip(boxes, scores) if score > args.confidence_threshold]
+            classes = [cls for cls, score in zip(classes, scores) if score > args.confidence_threshold]
+            scores = [score for score in scores if score > args.confidence_threshold]
 
-            print(f"{true_boxes=}")
-            print(f"{true_classes=}")
-            print(f"{boxes=}")
-            print(f"{classes=}")
-            print("\n" * 4)
+            # normalize
+            classes = [x - 1 for x in classes]
+            boxes = normalize_boxes(boxes, input_shape)
 
-            precision = compute_precision(classes, boxes, true_classes, true_boxes, args.iou_threshold)
-            print(f"{precision:.10f}")
+            true_boxes = data["objects"]["bbox"][0].numpy().tolist()
+            true_classes = data["objects"]["label"][0].numpy().tolist()
 
+            precision = compute_precision(pred_bboxes=boxes, pred_labels=classes, true_bboxes=true_boxes, true_labels=true_classes, iou_threshold=args.iou_threshold)
 
-def convert_coco_bbox(bbox, img_width, img_height):
-    x, y, width, height = bbox
-    return [y/img_height, x/img_width, (y+height)/img_height, (x+width)/img_width]
-
-
-def calculate_iou(box1, box2):
-    y1_max = max(box1[0], box2[0])
-    x1_max = max(box1[1], box2[1])
-    y2_min = min(box1[2], box2[2])
-    x2_min = min(box1[3], box2[3])
-    
-    intersection = max(0, x2_min - x1_max) * max(0, y2_min - y1_max)
-    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
-    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-    
-    iou = intersection / (area1 + area2 - intersection + 1e-6)
-    return iou
-
-def compute_precision(pred_labels, pred_bboxes, true_labels, true_bboxes, iou_threshold):
-    true_positives = 0
-    false_positives = 0
-    
-    for pred_label, pred_bbox in zip(pred_labels, pred_bboxes):
-        matched = False
-        for true_label, true_bbox in zip(true_labels, true_bboxes):
-            if pred_label == true_label and calculate_iou(pred_bbox, true_bbox) >= iou_threshold:
-                true_positives += 1
-                matched = True
-                break
-        if not matched:
-            false_positives += 1
-
-    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
-    return precision
-
-
-def print_outputdetails(outputs, output_details):
-    for i, output in enumerate(output_details):
-        print(f"Output {i}:")
-        print(f"  Name: {output['name']}")
-        print(f"  Shape: {output['shape']}")
-        print(f"  Values: {outputs[i]}")
-    print("-" * 80)
+            result = {
+                "quantization": config,
+                "inference_time": inference_time,
+                "precision": precision,
+            }
+            with open(output_path / "det.csv", "a") as f:
+                writer = csv.DictWriter(f, fieldnames=result.keys())
+                if f.tell() == 0:
+                    writer.writeheader()
+                writer.writerow(result)
 
 
 if __name__ == "__main__":
     args = SimpleNamespace(
         int8_train_size=100,
-        sample_size=10,  # set to 1500 for full evaluation
-        confidence_threshold=0.5,
-        iou_threshold=0.5,
+        sample_size=1500,
+        confidence_threshold=0.0,
+        iou_threshold=0.01,  # extremely sensitive
     )
     main(args)
