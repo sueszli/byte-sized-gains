@@ -109,7 +109,7 @@ Next we want to gain a better understanding of inference speed vs. precision as 
 - float16 : 0.0232883892068324
 - float32 : -0.0365188366830796
 
-This is because the changes in inference speed were really marginal andin the 1e-2 region, as visualized in the logarithmic boxplot of all inference times (add ref to plot).
+This is because the changes in inference speed were really marginal and in the 1e-2 range, as visualized in the logarithmic boxplot of all inference times (add ref to plot). The increase from a float16 to a fully integer quantized model however is substantial in the given tolerance range.
 
 ![ODM: Logarithmic Inference Time Boxplot](docs/assets/det-plot2.png)
 
