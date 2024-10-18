@@ -66,18 +66,18 @@ In the first part of this project we quantize an object detection model.
 
 #### Challenges
 
-We started this task off by aiming for the stars and comparing the best models we could find on the public "papers with code" leaderboard for the COCO 2017 dataset [^coco]. Then we ran our own experiments to find the most representative models from each architecture family [^family]. We then noticed the DETR family to perform the best, particularly the "facebook/detr-resnet-101-dc5" model, as it also generalizes well across multiple datasets using the COCO vocabulary. This specific DETR model additionally was trained on COCO 2017 dataset - the exact one we are using - which should give it an advantage.
+We started this task off by aiming for the stars and comparing the best models we could find on the public "papers with code" leaderboard for the COCO 2017 dataset [^coco]. Then we ran our own experiments to find the most representative models from each architecture family [^family]. We then noticed the DETR family to perform the best, particularly the "facebook/detr-resnet-101-dc5" model, as it generalizes well and was trained on the same dataset we are using, namely COCo-2017.
 
 [^coco]: https://paperswithcode.com/sota/object-detection-on-coco
 [^family]: https://github.com/ETH-DISCO/advx-bench/tree/main/analysis/model-selection
 
 But after implementing the entire evaluation pipeline for our experiments in PyTorch we realized Torch XLA builds a shared library, `_XLAC.so` that needs to link to the version of Python it was built with (currently 3.10 or 3.11). And in order to ensure that `import _XLAC` can succeed, we had to update the `LD_LIBRARY_PATH` to the lib directory of our Python environment. This was a major blocker for us as we were unable to resolve this issue even within a docker container. This made us have to pivot to TensorFlow models instead as they are directly supported by LiteRT and do not need a seperate layer of abstraction / translation like PyTorch models do. Additionally the LiteRT compiled models return Tensorflow specific data-types, making it more convenient to just write the whole pipeline in Tensorflow v2.
 
-We started from scratch, but this time instead of looking for state-of-the-art performance we only limited ourselves to models which are compatible with LiteRT. Our first choice was Efficientnet, but we quickly stumbled upon 0-gradient bugs in the int8 quantified version – which we assume is because of the model depth. Additionally the int8 quantization tuning step frequently took over 2 hours to finish on our consumer machine.
+We started from scratch, but this time instead of looking for state-of-the-art performance we only limited ourselves to those which are compatible with LiteRT. Our first choice was Efficientnet, but we quickly stumbled upon 0-gradient bugs in the int8 quantified version – which we assume is because of the model depth. Additionally the int8 quantization tuning step frequently took over 2 hours to finish on our consumer machine.
 
 We spent 2 full working days trying to mitigate these issues but ended up pivoting again, but this time to `mobilenet_v2` as our base model.
 
-But given the experimental nature of LiteRT and the lack of both community and documentation especially the full integer quantization was very tedious, as both the quantization of weights and the inputs and outputs resulted in many complications. Additionally the authors auf this accelerator module didn't implement more fine granular error messages, causing shotgun debugging to be the only viable option whenever issues emerged 
+Given the experimental nature of LiteRT and the lack of both community and documentation especially the full integer quantization was very tedious. Both the quantization of weights and the inputs and outputs resulted in many complications, mostly because the authors auf this library didn't implement more fine granular error messages, causing shotgun debugging to be the only viable option whenever issues emerged.
 
 #### Methodology
 
