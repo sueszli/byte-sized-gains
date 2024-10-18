@@ -62,9 +62,9 @@ Tasks:
 
 -->
 
-#### Challenges
-
 In the first part of this project we quantize an object detection model.
+
+#### Challenges
 
 We started this task off by aiming for the stars and comparing the best models we could find on the public "papers with code" leaderboard for the COCO 2017 dataset [^coco]. Then we ran our own experiments to find the most representative models from each architecture family [^family]. We then noticed the DETR family to perform the best, particularly the "facebook/detr-resnet-101-dc5" model, as it also generalizes well across multiple datasets using the COCO vocabulary. This specific DETR model additionally was trained on COCO 2017 dataset - the exact one we are using - which should give it an advantage.
 
