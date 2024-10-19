@@ -154,7 +154,7 @@ Tasks:
 -->
 
 
-<!-- criticize that these aren't proper benchmarks as you always have to measure one level deeper, cite the paper -->
+<!-- criticize that these aren't proper benchmarks as you always have to measure one level deeper, cite the paper: https://cacm.acm.org/research/always-measure-one-level-deeper/ -->
 
 
 <!-- make presentation pdf as well -->
