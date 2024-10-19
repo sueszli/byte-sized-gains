@@ -153,19 +153,39 @@ Tasks:
 
 -->
 
+In the second part of our project, we focused on quantizing a large language model (LLM). We selected the SmolLM-135M model, a smaller variant of LLMs that is more suitable for edge devices and resource-constrained environments.
+
 #### Methodology
 
-... generate using perplexity
+Our methodology involved quantizing this model using AutoGPTQ with three different configurations: int8, int4, and int2, representing increasingly aggressive levels of quantization. For the quantization process, we utilized the GPTQ (Generative Pre-trained Transformer Quantization) method, which is implemented in the AutoGPTQ library. We configured the quantization process with a group size of 64 and used a subset of 100 samples from the LAMBADA dataset as a representative dataset for calibration. This step is crucial for ensuring that the quantized model can accurately represent the distribution of activations in the original model.
+
+We evaluated the quantized models on the LAMBADA dataset, which is specifically designed to test the ability of language models to understand and generate coherent text. For our experiments, we used a sample size of 5000 examples from the test split of the dataset. The LAMBADA task involves predicting the last word of a given context, which aligns well with our evaluation metrics. Our evaluation pipeline involved several key steps. First, we loaded the quantized model and tokenizer for each bit configuration (8, 4, and 2 bits). We then iterated through the dataset, processing each example by separating the context (all words except the last) and the target (the last word). We tokenized the context and passed it through the model to generate predictions.
+
+We measured two primary accuracy metrics: Top-1 accuracy and Top-5 accuracy. Top-1 accuracy represents the proportion of examples where the model's highest probability prediction matches the target word. Top-5 accuracy measures the proportion of examples where the target word is among the model's top 5 predictions. These metrics provide insights into the model's precision at different levels of strictness. To assess the computational efficiency of the quantized models, we measured the inference speed in tokens per second. We calculated this by dividing the total number of tokens processed (including both input tokens and the single generated token for each example) by the total elapsed time for the evaluation. We also tracked the memory footprint of each quantized model using the `get_memory_footprint()` method, which provides an estimate of the model's size in memory. This metric is crucial for understanding the trade-off between model size and performance, especially for deployment on edge devices with limited resources.
+
+All experiments were conducted on a CUDA-enabled NVIDIA GeForce RTX 3090 using a Red Hat Linux Distribution to ensure consistent and efficient processing. We implemented safeguards to clear GPU memory and collect garbage between different quantization configurations to prevent memory-related issues and ensure fair comparisons.
 
 #### Results
 
-...
+Starting with accuracy, we observe a clear trend of improved performance as we increase the number of bits used for quantization. The 2-bit model shows the lowest accuracy, with a top-1 accuracy of 0.18% and a top-5 accuracy of 0.82%. There is a significant jump in performance when moving to 4-bit quantization, with top-1 accuracy increasing to 5.24% and top-5 accuracy to 8.88%. The 8-bit model performs slightly better, achieving 5.48% top-1 accuracy and 9.8% top-5 accuracy. This trend aligns with our expectations, as higher bit precision generally allows for more accurate representation of the model's weights and activations.
 
+Interestingly, the inference speed, measured in tokens per second, remains relatively consistent across all three quantization levels. The 4-bit model shows the highest throughput at 1422.68 tokens per second, followed closely by the 2-bit model at 1422.49 tokens per second. The 8-bit model is slightly slower at 1414.73 tokens per second. These minor differences suggest that the quantization level has a minimal impact on inference speed for this particular model and hardware configuration.
 
+The memory footprint of the model, as expected, increases with the number of bits used for quantization. The 2-bit model has the smallest footprint at 87.57 MB, the 4-bit model occupies 114.53 MB, and the 8-bit model requires 168.44 MB. This linear increase in memory usage is consistent with the theoretical expectations of quantization, where doubling the number of bits roughly doubles the memory requirements.
 
+It's worth noting that all models processed the same number of samples (5000) and tokens (416,476) during the evaluation, ensuring a fair comparison across different quantization levels. The elapsed time for each evaluation was also similar, ranging from 292.74 to 294.39 seconds, which corroborates the consistency in inference speed.
 
+The trade-off between model size and accuracy is evident in these results. While the 2-bit model offers the smallest memory footprint, its accuracy is significantly lower than the 4-bit and 8-bit versions. The jump from 2-bit to 4-bit quantization provides a substantial boost in accuracy with a relatively modest increase in memory usage. The improvement from 4-bit to 8-bit is less pronounced in terms of accuracy but comes with a more significant increase in memory requirements.
 
+These findings suggest that for deployment scenarios where memory is extremely constrained, the 4-bit model might offer the best balance between accuracy and resource usage. It provides a significant accuracy improvement over the 2-bit model while still maintaining a relatively small memory footprint. The 8-bit model, while offering the highest accuracy, may be more suitable for scenarios where memory constraints are less severe and maximum accuracy is prioritized.
 
+It's important to note that while the accuracy figures may seem low in absolute terms, they should be considered in the context of the LAMBADA dataset, which is known to be challenging even for larger language models. The task of predicting the last word given a context is particularly difficult and often requires a deep understanding of long-range dependencies and complex semantics.
+
+In conclusion, our quantization experiments demonstrate the viability of running compressed versions of the SmolLM-135M model on resource-constrained devices. The results provide valuable insights into the trade-offs between model size, accuracy, and inference speed, which can guide decisions in deploying language models for various applications, especially in edge computing scenarios where energy efficiency and reduced computational requirements are crucial.
+
+![Accuracy vs. Memory Footprint](docs/assets/lang-plot0.png)
+
+![Inference Speed vs. Memory Footprint](docs/assets/lang-plot1.png)
 
 # Final Thoughts
 

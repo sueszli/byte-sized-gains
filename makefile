@@ -136,7 +136,7 @@ rmd-to-pdf:
 
 .PHONY: md-to-pdf # compile md to pdf
 md-to-pdf:
-	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf"
+	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf" --pdf-engine=/Library/TeX/texbin/pdflatex
 
 .PHONY: md-to-slides # compile md to pdf slides
 md-to-slides:
