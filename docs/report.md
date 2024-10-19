@@ -122,19 +122,19 @@ Next we want to gain a better understanding of inference speed vs. precision as 
 
 This is because the changes in inference speed were really marginal and in the 1e-2 range, as visualized in the logarithmic boxplot of all inference times. The increase from a float16 to a fully integer quantized model however is substantial in the given tolerance range.
 
-![ODM: Logarithmic Inference Time Boxplot](docs/assets/det-plot2.png)
+![ODM: Logarithmic Inference Time box plot](docs/assets/det-plot2.png)
 
 The IoU@0.01 precision however does show fluctuations as visualized in the scatterplot and boxplots. 
 
 However very counter intuitively, as we increase the model size and granularity the performance seems to worsen.
 
-![ODM: Inference Time vs. IoU Precision Scatterplot](docs/assets/det-plot1.png)
+![ODM: Inference Time vs. IoU Precision scatter plot](docs/assets/det-plot1.png)
 
-![ODM: Inference Time vs. IoU Precision Boxplots](docs/assets/det-plot0.png)
+![ODM: Inference Time vs. IoU Precision Bar plots](docs/assets/det-plot0.png)
 
 Given the counter intuitive results we observed in the benchmarks there is a realistic chance that the IoU implementation is faulty, given how bad the models performed and how low we set the area of intersection to be to count as a hit. However the same algorithm was also used for our PyTorch benchmark and lead to sane results. We were unable to find the cause.
 
-In conclusion: The results are inconclusive. Further inspection to is necessary to validate our counter intuitive findings.
+In conclusion: The results are inconclusive. Further inspection to is necessary to validate our counter intuitive findings. If these findings were to be correct, the int8 quantized model would be the best choice for any deployment scenario as it is the most efficient in terms of memory, inference speed and precision.
 
 \newpage
 

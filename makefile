@@ -138,6 +138,10 @@ rmd-to-pdf:
 md-to-pdf:
 	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf"
 
+.PHONY: md-to-slides # compile md to pdf slides
+md-to-slides:
+	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf" -t beamer
+
 .PHONY: fmt # format codebase
 fmt:
 	python -m pip install isort
