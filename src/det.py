@@ -1,7 +1,7 @@
-import time
 import csv
 import logging
 import os
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -168,7 +168,7 @@ def main(args):
                 else:
                     test_image = test_image - input_zero_point
             test_image = np.expand_dims(test_image, axis=0).astype(input_details["dtype"])
-            
+
             # benchmark (don't use tf.timestamp)
             interpreter.set_tensor(input_details["index"], test_image)
             start_time = time.time()
