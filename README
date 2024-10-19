@@ -1,5 +1,0 @@
-
-```bash
-export BUILD_CUDA_EXT=0
-pip install auto-gptq
-```
