@@ -95,6 +95,7 @@ def main(args):
         end_time = time.time()
         elapsed_time = end_time - start_time
         stats = {
+            "bits": bits,
             "top_1_accuracy": correct_1 / total,
             "top_5_accuracy": correct_k / total,
             "tokens_per_second": total_tokens / elapsed_time,
