@@ -1,0 +1,10 @@
+bitsandbytes
+kagglehub
+numpy
+Pillow
+tensorflow
+tensorflow_datasets
+tensorflow_hub
+torch
+tqdm
+transformers
