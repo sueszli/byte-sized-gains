@@ -153,8 +153,28 @@ Tasks:
 
 -->
 
+#### Methodology
 
-<!-- criticize that these aren't proper benchmarks as you always have to measure one level deeper, cite the paper: https://cacm.acm.org/research/always-measure-one-level-deeper/ -->
+... generate using perplexity
 
+#### Results
+
+...
+
+
+
+
+
+
+
+# Final Thoughts
+
+The experiments we conducted are not representative of data-driven performance analytics research because they fall into several common pitfalls highlighted in the article "Always Measure One Level Deeper"[^deeper]. Firstly, the experiments seem to rely heavily on superficial measurements, such as overall model size and basic precision metrics, without getting into deeper system behaviors or the underlying factors affecting performance. This superficiality can lead to incomplete and potentially misleading conclusions about system performance.
+
+[^deeper]: Ousterhout, J. (2018). Always measure one level deeper. Communications of the ACM, 61(7), 74-83.
+
+Moreover, there appears to be a confirmation bias in the methodology. The experiments focus on quantization techniques that reduce model size and memory footprint but do not sufficiently explore how these changes impact other critical aspects of performance, such as computational efficiency or energy consumption. This selective reporting can skew results to favor certain outcomes without a comprehensive analysis of all potential impacts. Additionally, the experiments might suffer from hasty execution, as indicated by the reliance on a small set of configurations and datasets without extensive validation or exploration of alternative scenarios. This haste can result in overlooking important system behaviors or potential improvement. Lastly, there's a lack of deeper measurement to validate top-level findings, such as understanding why certain quantization configurations lead to specific performance outcomes or identifying bottlenecks within the system.
+
+In conclusion this project is a good starting point for further research into quantization techniques for ODMs and LLMs. However, to draw more robust conclusions and make informed decisions about model optimization, future work should address the limitations highlighted in this analysis.
 
 <!-- make presentation pdf as well -->
