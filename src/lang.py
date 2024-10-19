@@ -19,7 +19,13 @@ assert get_device(disable_mps=False) == "cuda", "model quantization requires a G
 
 dataset = load_dataset("cimec/lambada", split="test", streaming=False, cache_dir=dataset_path)
 
+
 def quantize_and_save(bits):
+    modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
+    if os.path.exists(modelpath):
+        print(f"{modelpath} already exists, skipping")
+        return
+
     model_id = "HuggingFaceTB/SmolLM-135M"
     tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=weights_path)
 
@@ -32,15 +38,19 @@ def quantize_and_save(bits):
     )
     model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=gptq_config, cache_dir=weights_path, device_map="auto")
 
-    model.save_pretrained(f"{model_id}-{bits}bit-gptq")
-    tokenizer.save_pretrained(f"{model_id}-{bits}bit-gptq")
+    model.save_pretrained(modelpath)
+    tokenizer.save_pretrained(modelpath)
 
 
 def main(args):
-    device = get_device(disable_mps=False)
-    model_id = "HuggingFaceTB/SmolLM-135M"
-    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=weights_path)
-    model = AutoModelForCausalLM.from_pretrained(model_id, cache_dir=weights_path).to(device)
+    for bits in [2, 4, 8]:
+        quantize_and_save(bits)
+
+    bits = 8
+
+    modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
+    model = AutoModelForCausalLM.from_pretrained(modelpath, device_map="auto")
+    tokenizer = AutoTokenizer.from_pretrained(modelpath)
     model.eval()
 
     inputs = tokenizer.encode("def print_hello_world():", return_tensors="pt").to(device)
@@ -49,10 +59,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    for bits in [2, 4, 8]:
-        print(f"quantizing to {bits} bits")
-        quantize_and_save(bits)
-
     args = SimpleNamespace(
         sample_size=1500,
     )
+    main(args)
