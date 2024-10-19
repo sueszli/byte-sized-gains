@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import torch
-import tqdm
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig
 
 from datasets import load_dataset
