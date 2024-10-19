@@ -62,10 +62,6 @@ def main(args):
         model.eval()
         model.to("cuda")
 
-        # inputs = tokenizer.encode("the best way to start a new adventure is to", return_tensors="pt").to("cuda")
-        # outputs = model.generate(inputs)
-        # print(tokenizer.decode(outputs[0]))
-
         correct_1 = 0
         correct_k = 0
         total = 0
@@ -105,7 +101,7 @@ def main(args):
             "total_samples": total,
             "total_tokens": total_tokens,
             "elapsed_time": elapsed_time,
-            "memory_footprint": model.get_memory_footprint() / 1e6,
+            "memory_footprint_mb": model.get_memory_footprint() / 1e6,
         }
         with open(output_path / f"lang.csv", "a") as f:
             writer = csv.DictWriter(f, fieldnames=stats.keys())

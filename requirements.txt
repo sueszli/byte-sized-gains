@@ -14,8 +14,6 @@ absl-py==2.1.0
     #   tensorflow-metadata
 astunparse==1.6.3
     # via tensorflow
-bitsandbytes==0.42.0
-    # via -r requirements.in
 certifi==2024.8.30
     # via requests
 charset-normalizer==3.4.0
@@ -100,7 +98,6 @@ numpy==1.26.4
     #   keras
     #   ml-dtypes
     #   pyarrow
-    #   scipy
     #   tensorboard
     #   tensorflow
     #   tensorflow-datasets
@@ -153,8 +150,6 @@ rich==13.9.2
     # via keras
 safetensors==0.4.5
     # via transformers
-scipy==1.14.1
-    # via bitsandbytes
 simple-parsing==0.1.6
     # via tensorflow-datasets
 six==1.16.0

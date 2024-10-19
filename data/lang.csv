@@ -1,0 +1,2 @@
+top_1_accuracy,top_5_accuracy,tokens_per_second,total_samples,total_tokens,elapsed_time,memory_footprint_mb
+0.0018,0.0082,1422.4943005006785,5000,416476,292.7786774635315,87.570944
