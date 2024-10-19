@@ -152,8 +152,3 @@ Tasks:
 - writing the report & presentation
 
 -->
-
-LAMBADA leaderboard:
-
-- https://paperswithcode.com/sota/language-modelling-on-lambada
-
