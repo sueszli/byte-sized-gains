@@ -98,7 +98,15 @@ def main(args):
 
         end_time = time.time()
         elapsed_time = end_time - start_time
-        stats = {"top_1_accuracy": correct_1 / total, "top_5_accuracy": correct_k / total, "tokens_per_second": total_tokens / elapsed_time, "total_samples": total, "total_tokens": total_tokens, "elapsed_time": elapsed_time, "memory_footprint": model.get_memory_footprint() / 1e6}
+        stats = {
+            "top_1_accuracy": correct_1 / total,
+            "top_5_accuracy": correct_k / total,
+            "tokens_per_second": total_tokens / elapsed_time,
+            "total_samples": total,
+            "total_tokens": total_tokens,
+            "elapsed_time": elapsed_time,
+            "memory_footprint": model.get_memory_footprint() / 1e6,
+        }
         with open(output_path / f"lang.csv", "a") as f:
             writer = csv.DictWriter(f, fieldnames=stats.keys())
             if i == 0:
