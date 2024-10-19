@@ -1,3 +1,6 @@
+import tqdm
+import torch
+import gc
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,8 +20,6 @@ os.makedirs(weights_path, exist_ok=True)
 
 assert get_device(disable_mps=False) == "cuda", "model quantization requires a GPU"
 
-dataset = load_dataset("cimec/lambada", split="test", streaming=False, cache_dir=dataset_path)
-
 
 def quantize_and_save(bits):
     modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
@@ -27,11 +28,12 @@ def quantize_and_save(bits):
         return
 
     model_id = "HuggingFaceTB/SmolLM-135M"
+    dataset = load_dataset("cimec/lambada", split="test", streaming=False, cache_dir=dataset_path)
     tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=weights_path)
 
     gptq_config = GPTQConfig(
         bits=bits,
-        group_size=64,  # You can experiment with values between 32 and 128
+        group_size=64,
         dataset=dataset.select(range(100))["text"],
         tokenizer=tokenizer,
         block_name_to_quantize="model.layers",
@@ -44,21 +46,24 @@ def quantize_and_save(bits):
 
 
 def main(args):
-    # for bits in [2, 4, 8]:
-    for bits in [8]:
+    dataset = load_dataset("cimec/lambada", split="test", streaming=False, cache_dir=dataset_path)
+
+    for bits in [2, 4, 8]:
+        print(f"quantizing model to {bits}-bit")
         quantize_and_save(bits)
 
         modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
         model = AutoModelForCausalLM.from_pretrained(modelpath, device_map="auto")
         tokenizer = AutoTokenizer.from_pretrained(modelpath)
         model.eval()
+        print(f"{bits}-bit memory footprint: {model.get_memory_footprint() / 1e6:.2f} MB")
 
-        print(f"memory footprint: {model.get_memory_footprint() / 1e6:.2f} MB")
-        
-        inputs = tokenizer.encode("def print_hello_world():", return_tensors="pt").to("cuda")
+        inputs = tokenizer.encode("the best way to start a new adventure is to", return_tensors="pt").to("cuda")
         outputs = model.generate(inputs)
         print(tokenizer.decode(outputs[0]))
 
+        gc.collect()
+        torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
