@@ -2,10 +2,10 @@
 ⠀⠀⠀⠀⠀⠀⢱⣆⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠈⣿⣷⡀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⢸⣿⣿⣷⣧⠀⠀⠀
-⠀⠀⠀⠀⡀⢠⣿⡟⣿⣿⣿⡇⠀⠀  byte sized gains
+⠀⠀⠀⠀⡀⢠⣿⡟⣿⣿⣿⡇⠀⠀        byte sized gains
 ⠀⠀⠀⠀⣳⣼⣿⡏⢸⣿⣿⣿⢀⠀  
-⠀⠀⠀⣰⣿⣿⡿⠁⢸⣿⣿⡟⣼⡆  a performance analysis
-⢰⢀⣾⣿⣿⠟⠀⠀⣾⢿⣿⣿⣿⣿  of quantized ml models
+⠀⠀⠀⣰⣿⣿⡿⠁⢸⣿⣿⡟⣼⡆        a performance analysis
+⢰⢀⣾⣿⣿⠟⠀⠀⣾⢿⣿⣿⣿⣿        of quantized ml models
 ⢸⣿⣿⣿⡏⠀⠀⠀⠃⠸⣿⣿⣿⡿  
 ⢳⣿⣿⣿⠀⠀⠀⠀⠀⠀⢹⣿⡿⡁  
 ⠀⠹⣿⣿⡄⠀⠀⠀⠀⠀⢠⣿⡞⠁
