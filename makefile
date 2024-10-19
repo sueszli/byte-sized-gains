@@ -140,7 +140,7 @@ md-to-pdf:
 
 .PHONY: md-to-slides # compile md to pdf slides
 md-to-slides:
-	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf" -t beamer
+	pandoc "$(filepath)" -o "$(basename $(filepath)).pdf" -t beamer --pdf-engine=/Library/TeX/texbin/pdflatex
 
 .PHONY: fmt # format codebase
 fmt:
