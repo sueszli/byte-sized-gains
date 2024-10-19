@@ -31,6 +31,7 @@ def quantize_and_save(bits):
 
     gptq_config = GPTQConfig(
         bits=bits,
+        group_size=64,  # You can experiment with values between 32 and 128
         dataset=dataset.select(range(100))["text"],
         tokenizer=tokenizer,
         block_name_to_quantize="model.layers",
@@ -43,19 +44,21 @@ def quantize_and_save(bits):
 
 
 def main(args):
-    for bits in [2, 4, 8]:
+    # for bits in [2, 4, 8]:
+    for bits in [8]:
         quantize_and_save(bits)
 
-    bits = 8
+        modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
+        model = AutoModelForCausalLM.from_pretrained(modelpath, device_map="auto")
+        tokenizer = AutoTokenizer.from_pretrained(modelpath)
+        model.eval()
 
-    modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
-    model = AutoModelForCausalLM.from_pretrained(modelpath, device_map="auto")
-    tokenizer = AutoTokenizer.from_pretrained(modelpath)
-    model.eval()
+        print(f"memory footprint: {model.get_memory_footprint() / 1e6:.2f} MB")
+        
+        inputs = tokenizer.encode("def print_hello_world():", return_tensors="pt").to("cuda")
+        outputs = model.generate(inputs)
+        print(tokenizer.decode(outputs[0]))
 
-    inputs = tokenizer.encode("def print_hello_world():", return_tensors="pt").to(device)
-    outputs = model.generate(inputs)
-    print(tokenizer.decode(outputs[0]))
 
 
 if __name__ == "__main__":
