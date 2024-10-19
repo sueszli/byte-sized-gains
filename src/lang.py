@@ -13,6 +13,7 @@ from datasets import load_dataset
 from utils import get_device
 
 assert get_device(disable_mps=False) == "cuda", "model quantization requires a GPU"
+torch.cuda.set_device(0)
 
 output_path = Path.cwd() / "data"
 dataset_path = Path.cwd() / "datasets"
@@ -54,16 +55,16 @@ def main(args):
         print(f"quantizing model to {bits}-bit")
         quantize_and_save(bits)
 
+        print(f"benchmarking {bits}-bit model")
         modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
-        model = AutoModelForCausalLM.from_pretrained(modelpath, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(modelpath)
         tokenizer = AutoTokenizer.from_pretrained(modelpath)
         model.eval()
+        model.to("cuda")
 
         # inputs = tokenizer.encode("the best way to start a new adventure is to", return_tensors="pt").to("cuda")
         # outputs = model.generate(inputs)
         # print(tokenizer.decode(outputs[0]))
-
-        print(f"benchmarking {bits}-bit model")
 
         correct_1 = 0
         correct_k = 0
@@ -82,6 +83,7 @@ def main(args):
             input_length = inputs.input_ids.shape[1]
             total_tokens += input_length + 1  # input tokens + 1 generated token
 
+            inputs = {k: v.to("cuda") for k, v in inputs.items()}
             with torch.no_grad():
                 outputs = model(**inputs)
 
