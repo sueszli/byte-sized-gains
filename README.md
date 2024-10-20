@@ -13,7 +13,7 @@
 ⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀
 ```
 
-In this project we're (among other things) quantizing the SmolLM-135M language model using `AutoGPTQ` with `int8`, `int4`, and `int2` configurations. The models were evaluated on the LAMBADA dataset, measuring top-1 and top-5 accuracy, inference speed, and memory footprint.
+In this project we're (among other things) quantizing the [SmolLM-135M](https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966) language model using `AutoGPTQ` with `int8`, `int4`, and `int2` configurations. The models were evaluated on the LAMBADA dataset, measuring top-1 and top-5 accuracy, inference speed, and memory footprint.
 
 ![](docs/assets/lang-plot0.png)
 
