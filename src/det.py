@@ -101,7 +101,8 @@ def main(args):
     # original model
     model_path = weights_path / "mobilenetv2"
     if not model_path.exists():
-        model = kagglehub.model_download(handle="tensorflow/ssd-mobilenet-v2/tensorFlow2/ssd-mobilenet-v2", path=str(model_path))
+        model = kagglehub.model_download(handle="tensorflow/ssd-mobilenet-v2/tensorFlow2/ssd-mobilenet-v2")
+        model = tf.saved_model.load(model)
         tf.saved_model.save(model, str(model_path))
     model = tf.saved_model.load(str(model_path))
     print(f"original model: {sum(f.stat().st_size for f in model_path.glob('**/*') if f.is_file()) / 1024 / 1024:.2f} MB")
