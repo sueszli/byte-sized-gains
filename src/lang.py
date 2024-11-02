@@ -51,12 +51,14 @@ def quantize_and_save(bits):
 
 
 def main(args):
-    for bits in [2, 4, 8]:
+    for bits in ['full', 2, 4, 8]:
         print(f"quantizing model to {bits}-bit")
-        quantize_and_save(bits)
+        if bits != 'full': quantize_and_save(bits)
 
         print(f"benchmarking {bits}-bit model")
         modelpath = weights_path / f"quantized-smollm135m-{bits}bits"
+        if bits == 'full':
+            modelpath = 'HuggingFaceTB/SmolLM-135M'
         model = AutoModelForCausalLM.from_pretrained(modelpath)
         tokenizer = AutoTokenizer.from_pretrained(modelpath)
         model.eval()
